@@ -1,0 +1,12 @@
+/* Default (show element on larger screens) */
+.sidebar {
+    display: block; /* or flex, grid, etc. depending on the layout */
+  }
+  
+  /* Hide element on small screens (less than 768px wide) */
+  @media (max-width: 768px) {
+    .sidebar {
+      display: none;
+    }
+  }
+  
