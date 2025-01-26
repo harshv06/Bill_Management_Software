@@ -31,6 +31,51 @@ const Lander = () => {
     setSelectedCompany(null);
   };
 
+  const newdata = [
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+    {
+      company_id:'001',
+      company_name:'Aditya',
+      city:'Pune',
+      country:'India'
+    },
+  ]
+
   return (
     <>
      <div className="flex h-screen">
@@ -54,7 +99,7 @@ const Lander = () => {
             </p>
           </div>
           <div>
-            {data.map((item) => (
+            {newdata.map((item) => (
               <div
                 key={item.company_id}
                 className="p-4 bg-white shadow rounded mt-4 cursor-pointer"
