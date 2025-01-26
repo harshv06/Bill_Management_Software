@@ -15,7 +15,7 @@ const Sidebar = () => {
                         <Link to={'/invoices'} className="p-2 rounded hover:bg-gray-700">Invoices</Link>
                         <Link to={'/clients'} className="p-2 rounded hover:bg-gray-700">Clients</Link>
                         <Link to={'/reports'} className="p-2 rounded hover:bg-gray-700">Reports</Link>
-                        <Link to={'/settings'} className="p-2 rounded hover:bg-gray-700">Settings</Link>
+                        <Link to={'/fleet'} className="p-2 rounded hover:bg-gray-700">Fleet</Link>
                         
                        
                     </nav>
