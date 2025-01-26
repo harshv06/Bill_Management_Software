@@ -3,21 +3,24 @@ import "../style/Lander.css";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCompanyPaymentRecordData, fetchMainData } from "../../store/fetchdataslice";
 import Modal from "../components/Modal"; // Import the Modal component
+import Sidebar from "../components/Sidebar";
+
 
 const Lander = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [PaymentHistory,setPaymentHistory]=useState([]);
+  const [PaymentHistory, setPaymentHistory] = useState([]);
   const dispatch = useDispatch();
+  // const data = 'xyxz';
   const { loading, data, error } = useSelector((state) => state.fetchData);
 
   useEffect(() => {
     dispatch(fetchMainData());
   }, [dispatch]);
 
-  const handleCompanyClick = async(company) => {
-    const temp=await fetchCompanyPaymentRecordData(company.company_id);
+  const handleCompanyClick = async (company) => {
+    const temp = await fetchCompanyPaymentRecordData(company.company_id);
     setPaymentHistory(temp);
     setSelectedCompany(company);
     setIsModalOpen(true);
@@ -29,33 +32,12 @@ const Lander = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <div className="bg-gray-800 text-white transition-all duration-300 md:w-64 sidebar">
-        <div className="flex flex-col items-center md:items-start p-4 space-y-4">
-          <h1 className="text-lg font-bold">Lander</h1>
-          <nav className="flex flex-col space-y-2">
-            <a href="#" className="p-2 rounded hover:bg-gray-700">
-              Dashboard
-            </a>
-            <a href="#" className="p-2 rounded hover:bg-gray-700">
-              Invoices
-            </a>
-            <a href="#" className="p-2 rounded hover:bg-gray-700">
-              Clients
-            </a>
-            <a href="#" className="p-2 rounded hover:bg-gray-700">
-              Reports
-            </a>
-            <a href="#" className="p-2 rounded hover:bg-gray-700">
-              Settings
-            </a>
-          </nav>
-        </div>
-      </div>
+    <>
+     <div className="flex h-screen">
+      <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 bg-gray-100 p-6">
+      <div className="flex-2 bg-gray-100 p-6">
         <header className="flex justify-between items-center bg-white p-4 shadow">
           <h1 className="text-2xl font-bold">Lander Dashboard</h1>
           <button className="p-2 bg-blue-500 text-white rounded md:hidden">
@@ -86,6 +68,7 @@ const Lander = () => {
           </div>
         </main>
       </div>
+      </div>
 
       {/* Modal */}
       <Modal
@@ -94,7 +77,7 @@ const Lander = () => {
         company={selectedCompany}
         initialPaymentHistory={PaymentHistory}
       />
-    </div>
+  </>
   );
 };
 
