@@ -90,6 +90,16 @@ const Fleet = () => {
     }
   };
 
+  const carex = [
+    {
+      car_id:'001',
+      car_name:'Porsche',
+      car_model:'911',
+      // DateOfService:Date.now,
+      
+    }
+  ];
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -127,17 +137,17 @@ const Fleet = () => {
 
               {/* List items */}
               <ul className="divide-y divide-gray-200">
-          {data?.cars?.map((car) => (
+          {data?.cars?.map((carex) => (
             <li
-              key={car.car_id}
+              key={carex.car_id}
               className="grid grid-cols-5 gap-4 p-4 hover:bg-gray-50 items-center cursor-pointer"
-              onClick={() => navigateToCarDetails(car)}
+              onClick={() => navigateToCarDetails(carex)}
             >
-              <div>{car.car_id}</div>
-              <div>{car.car_name}</div>
-              <div>{car.car_model}</div>
+              <div>{carex.car_id}</div>
+              <div>{carex.car_name}</div>
+              <div>{carex.car_model}</div>
               <div>
-                {new Date(car.DateOfService).toLocaleDateString()}
+                {new Date(carex.DateOfService).toLocaleDateString()}
               </div>
               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
