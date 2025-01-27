@@ -84,39 +84,91 @@ const Lander = () => {
         <Sidebar />
 
         {/* Main Content */}
-        <div className="flex-2 bg-gray-100 p-6">
-          <header className="flex justify-between items-center bg-white p-4 shadow">
-            <h1 className="text-2xl font-bold">Lander Dashboard</h1>
-            <button className="p-2 bg-blue-500 text-white rounded md:hidden">
-              ☰
-            </button>
-          </header>
+        <div className="flex-1 overflow-y-auto bg-gray-100 p-4">
+      <h1 className="text-2xl font-bold">Main Content</h1>
 
-          <main className="mt-4">
-            <div className="p-4 bg-white shadow rounded">
-              <h2 className="text-xl font-semibold">
-                Welcome to the Lander App
-              </h2>
-              <p className="text-gray-600 mt-2">
-                This is the main dashboard where you can manage your billing
-                operations.
-              </p>
-            </div>
-            <div>
-              {newdata.map((item) => (
-                <div
-                  key={item.company_id}
-                  className="p-4 bg-white shadow rounded mt-4 cursor-pointer"
-                  onClick={() => handleCompanyClick(item)}
-                >
-                  <h3 className="text-lg font-semibold">{item.company_name}</h3>
-                  <p className="text-gray-600 mt-2">{item.city}</p>
-                  <p className="text-gray-600 mt-2">{item.country}</p>
-                </div>
-              ))}
-            </div>
-          </main>
-        </div>
+      <div className="flex-1 overflow-y-auto bg-gray-100 p-4">
+      <h1 className="text-2xl font-bold">Main Content</h1>
+
+      <div id="section1" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 1</h2>
+        <p>Content for Section 1...</p>
+      </div>
+
+      <div id="section2" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 2</h2>
+        <p>Content for Section 2...</p>
+      </div>
+
+      <div id="section3" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 3</h2>
+        <p>Content for Section 3...</p>
+      </div>
+
+      <div id="section4" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 4</h2>
+        <p>Content for Section 4...</p>
+      </div>
+      <div id="section1" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 1</h2>
+        <p>Content for Section 1...</p>
+      </div>
+
+      <div id="section2" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 2</h2>
+        <p>Content for Section 2...</p>
+      </div>
+
+      <div id="section3" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 3</h2>
+        <p>Content for Section 3...</p>
+      </div>
+
+      <div id="section4" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 4</h2>
+        <p>Content for Section 4...</p>
+      </div>
+      <div id="section1" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 1</h2>
+        <p>Content for Section 1...</p>
+      </div>
+
+      <div id="section2" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 2</h2>
+        <p>Content for Section 2...</p>
+      </div>
+
+      <div id="section3" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 3</h2>
+        <p>Content for Section 3...</p>
+      </div>
+
+      <div id="section4" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 4</h2>
+        <p>Content for Section 4...</p>
+      </div>
+      <div id="section1" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 1</h2>
+        <p>Content for Section 1...</p>
+      </div>
+
+      <div id="section2" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 2</h2>
+        <p>Content for Section 2...</p>
+      </div>
+
+      <div id="section3" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 3</h2>
+        <p>Content for Section 3...</p>
+      </div>
+
+      <div id="section4" className="mt-8">
+        <h2 className="text-xl font-semibold">Section 4</h2>
+        <p>Content for Section 4...</p>
+      </div>
+    </div>
+    </div>
+        {/* </div> */}
       </div>
 
       {/* Modal */}
