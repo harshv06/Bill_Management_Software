@@ -13,10 +13,12 @@ export const fetchFleetData = createAsyncThunk(
       },
     });
     if (response.ok) {
+      console.log("Request sent");
       const data = await response.json();
-    //   console.log(data);
+      console.log(data);
       return data;
     } else {
+      console.log(response);
       throw new Error("Failed to fetch data");
     }
   }
