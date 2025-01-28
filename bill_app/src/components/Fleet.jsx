@@ -90,15 +90,15 @@ const Fleet = () => {
     }
   };
 
-  const carex = [
-    {
-      car_id:'001',
-      car_name:'Porsche',
-      car_model:'911',
-      // DateOfService:Date.now,
+  // const carex = [
+  //   {
+  //     car_id:'001',
+  //     car_name:'Porsche',
+  //     car_model:'911',
+  //     // DateOfService:Date.now,
       
-    }
-  ];
+  //   }
+  // ];
 
   return (
     <div className="flex h-screen">

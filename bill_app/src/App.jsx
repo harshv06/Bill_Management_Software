@@ -14,6 +14,7 @@ import Reports from "./components/Reports";
 import Settings from "./components/Settings";
 import Fleet from "./components/Fleet";
 import CarDetails from "./pages/CarDetails";
+import ClientDetails from "./pages/ClientDetails";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -30,6 +31,7 @@ function App() {
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/lander" element={<Lander />} />
             <Route path="/fleet/details" element={<CarDetails />} />
+            <Route path="/clients/details" element={<ClientDetails />} />
           </Routes>
         </div>
       </Router>
