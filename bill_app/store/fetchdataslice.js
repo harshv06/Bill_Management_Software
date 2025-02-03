@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-const BASE_URL = "http://192.168.0.106:5000/";
+const BASE_URL = "http://172.20.10.3:5000";
 
 export const fetchMainData = createAsyncThunk(
   "MainData/fetchMainData",
   async () => {
-    const response = await fetch(`${BASE_URL}getAllCompanies`, {
+    const response = await fetch(`${BASE_URL}/getCompanyStats`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

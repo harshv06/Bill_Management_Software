@@ -67,7 +67,7 @@ const Clients = () => {
     company: null,
   });
 
-  const API_BASE_URL = "http://192.168.0.106:5000/api/getAllCompanies";
+  const API_BASE_URL = "http://172.20.10.3:5000/api/getAllCompanies";
 
   useEffect(() => {
     loadCompanies(currentPage);
