@@ -90,16 +90,6 @@ const Fleet = () => {
     }
   };
 
-  // const carex = [
-  //   {
-  //     car_id:'001',
-  //     car_name:'Porsche',
-  //     car_model:'911',
-  //     // DateOfService:Date.now,
-      
-  //   }
-  // ];
-
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -147,11 +137,11 @@ const Fleet = () => {
               <div>{carex.car_name}</div>
               <div>{carex.car_model}</div>
               <div>
-                {new Date(carex.DateOfService).toLocaleDateString()}
+                {new Date(carex.induction_date).toLocaleDateString()}
               </div>
               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={() => handleDelete(car.car_id)}
+                  onClick={() => handleDelete(carex.car_id)}
                   className="text-red-500 hover:text-red-700"
                 >
                   Delete
@@ -160,7 +150,7 @@ const Fleet = () => {
                   onClick={() =>
                     setEditModalData({
                       isOpen: true,
-                      carData: car,
+                      carData: carex,
                     })
                   }
                   className="text-blue-500 hover:text-blue-700"

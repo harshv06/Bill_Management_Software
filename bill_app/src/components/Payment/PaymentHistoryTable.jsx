@@ -1,6 +1,27 @@
 import React from "react";
+import jsPDF from "jspdf";
 
-const PaymentHistoryTable = ({ payments, onDelete, onEdit, onViewReceipt }) => {
+const PaymentHistoryTable = ({ payments, onDelete, onEdit }) => {
+  const handleViewReceipt = (payment) => {
+    const doc = new jsPDF();
+
+    // Add content to the PDF
+    doc.setFontSize(20);
+    doc.text("Payment Receipt", 20, 20);
+
+    doc.setFontSize(12);
+    doc.text(`Receipt Number: ${payment.receipt_number}`, 20, 40);
+    doc.text(`Date: ${new Date(payment.payment_date).toLocaleDateString()}`, 20, 50);
+    doc.text(`Amount: $${parseFloat(payment.amount).toFixed(2)}`, 20, 60);
+    doc.text(`Payment Method: ${payment.payment_method}`, 20, 70);
+    doc.text(`Payment Mode: ${payment.payment_mode}`, 20, 80);
+    doc.text(`Status: ${payment.status}`, 20, 90);
+    doc.text(`Notes: ${payment.notes || 'N/A'}`, 20, 100);
+
+    // Open the PDF in a new tab
+    window.open(doc.output('bloburl'), '_blank');
+  };
+
   return (
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-50">
@@ -69,7 +90,7 @@ const PaymentHistoryTable = ({ payments, onDelete, onEdit, onViewReceipt }) => {
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
               <div className="flex space-x-3">
                 <button
-                  onClick={() => onViewReceipt(payment)}
+                  onClick={() => handleViewReceipt(payment)}
                   className="text-blue-600 hover:text-blue-900"
                 >
                   View Receipt
@@ -80,14 +101,12 @@ const PaymentHistoryTable = ({ payments, onDelete, onEdit, onViewReceipt }) => {
                 >
                   Edit
                 </button>
-                {payment.status !== "completed" && (
-                  <button
-                    onClick={() => onDelete(payment)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                )}
+                <button
+                  onClick={() => onDelete(payment)}
+                  className="text-red-600 hover:text-red-900"
+                >
+                  Delete
+                </button>
               </div>
             </td>
           </tr>

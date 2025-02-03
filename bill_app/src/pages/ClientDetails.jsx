@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { data, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
-import AddPaymentModal from "../components/Modals/AddPaymentModal";
+// import AddPaymentModal from "../components/Modals/AddPaymentModal";
 import PaymentHistorySection from "../components/Payment/PaymentHistorySection";
+import AddCompanyPaymentModal from "../components/Modals/AddCompanyPaymentModal";
 
 const ClientDetails = () => {
   const location = useLocation();
@@ -15,10 +16,6 @@ const ClientDetails = () => {
   const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState("");
   const [summary, setSummary] = useState({});
   const [filters, setFilters] = useState({
     startDate: "",
@@ -26,6 +23,8 @@ const ClientDetails = () => {
     status: "",
     paymentMethod: "",
   });
+
+  const [total_revenue,setTotalRevenue]=useState(0)
 
   const API_BASE_URL = "http://192.168.0.106:5000/api";
 
@@ -68,9 +67,11 @@ const ClientDetails = () => {
       const data = await response.json();
 
       if (data.status === "success") {
-        setPaymentHistory(data.data.payments);
+        setPaymentHistory(data.data.payments.reverse());
         setTotalPages(data.data.pagination.totalPages);
         setSummary(data.data.summary);
+        setTotalRevenue(data.data.summary.totalAmount)
+        console.log(data.data)
       } else {
         throw new Error(data.message || "Failed to fetch payment history");
       }
@@ -81,34 +82,33 @@ const ClientDetails = () => {
     }
   };
 
-
   const handleDelete = async (payment) => {
     try {
-      if (!window.confirm('Are you sure you want to delete this payment?')) {
+      if (!window.confirm("Are you sure you want to delete this payment?")) {
         return;
       }
 
       const response = await fetch(
         `${API_BASE_URL}/deletePayment/${payment.payment_id}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to delete payment');
+        throw new Error("Failed to delete payment");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
+
+      if (data.status === "success") {
         // Refresh payment history
         fetchPaymentHistory();
       } else {
-        throw new Error(data.message || 'Failed to delete payment');
+        throw new Error(data.message || "Failed to delete payment");
       }
     } catch (error) {
-      console.error('Error deleting payment:', error);
+      console.error("Error deleting payment:", error);
       alert(error.message);
     }
   };
@@ -116,31 +116,32 @@ const ClientDetails = () => {
   // Handle edit payment
   const handleEdit = async (paymentId, updatedData) => {
     try {
+      console.log(updatedData);
       const response = await fetch(
-        `${API_BASE_URL}/updatePayment/${paymentId}`,
+        `${API_BASE_URL}/updatePaymentDetails/${paymentId}`,
         {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(updatedData),
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to update payment');
+        throw new Error("Failed to update payment");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
+
+      if (data.status === "success") {
         // Refresh payment history
         fetchPaymentHistory();
       } else {
-        throw new Error(data.message || 'Failed to update payment');
+        throw new Error(data.message || "Failed to update payment");
       }
     } catch (error) {
-      console.error('Error updating payment:', error);
+      console.error("Error updating payment:", error);
       alert(error.message);
     }
   };
@@ -153,20 +154,20 @@ const ClientDetails = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to generate receipt');
+        throw new Error("Failed to generate receipt");
       }
 
       // Assuming the response is a PDF blob
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       // Open in new window
-      window.open(url, '_blank');
-      
+      window.open(url, "_blank");
+
       // Clean up
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating receipt:', error);
+      console.error("Error generating receipt:", error);
       alert(error.message);
     }
   };
@@ -176,7 +177,6 @@ const ClientDetails = () => {
     setCurrentPage(newPage);
   };
 
-  
   if (!company) return null;
 
   return (
@@ -276,7 +276,7 @@ const ClientDetails = () => {
                   Total Revenue
                 </label>
                 <p className="text-lg">
-                  {/* ${parseFloat(data.data.payments[0].Company.total_revenue).toFixed(2)} */}
+                  {total_revenue}
                 </p>
               </div>
             </div>
@@ -300,7 +300,7 @@ const ClientDetails = () => {
         {/* Add Payment Modal */}
 
         {isAddPaymentModalOpen && (
-          <AddPaymentModal
+          <AddCompanyPaymentModal
             isOpen={isAddPaymentModalOpen}
             onClose={() => setIsAddPaymentModalOpen(false)}
             companyId={company.company_id}

@@ -1,92 +1,271 @@
 // pages/CarDetails.js
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
+import AddCompanyPaymentModal from "../components/Modals/AddCompanyPaymentModal";
+import AddCarPaymentModal from "../components/Modals/AddCarPaymentModal";
+import AssignCarToCompanyModal from "../components/Modals/CarModals/AssignCarToCompanyModal";
 
 const CarDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { car } = location.state || {};
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [assignedCompanies, setAssignedCompanies] = useState([]);
+  const [isAssignCompanyModalOpen, setIsAssignCompanyModalOpen] =
+    useState(false);
+  const [loading, setLoading] = useState({
+    payments: true,
+    companies: true,
+  });
+  const [error, setError] = useState({
+    payments: null,
+    companies: null,
+  });
+  const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
 
-  const API_BASE_URL = "http://192.168.0.106:5000/api/cars";
+  // Reusable component for displaying detail rows
+const DetailRow = ({ label, value }) => (
+  <div className="flex justify-between">
+    <span className="text-gray-600 font-medium">{label}:</span>
+    <span className="text-gray-800 font-semibold">{value || 'N/A'}</span>
+  </div>
+);
 
-//   useEffect(() => {
-//     // Redirect if no car data
-//     if (!car) {
-//       navigate('/fleet');
-//       return;
-//     }
+  const API_BASE_URL = "http://192.168.0.106:5000/api";
 
-//     const fetchPaymentHistory = async () => {
-//       try {
-//         setLoading(true);
-//         const response = await fetch(`${API_BASE_URL}/${car.car_id}/payments`);
-//         if (!response.ok) throw new Error('Failed to fetch payment history');
-//         const data = await response.json();
-//         setPaymentHistory(data);
-//       } catch (err) {
-//         setError(err.message);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
+  useEffect(() => {
+    if (!car) {
+      navigate("/fleet");
+      return;
+    }
+    console.log(car);
 
-//     fetchPaymentHistory();
-//   }, [car, navigate]);
+    fetchPaymentHistory();
+    fetchAssignedCompanies();
+  }, [car, navigate]);
+
+  const fetchPaymentHistory = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, payments: true }));
+      const response = await fetch(
+        `${API_BASE_URL}/cars/payments/detail/${car.car_id}`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch payment history");
+
+      const data = await response.json();
+      console.log(data);
+      setPaymentHistory(data.data.payments || []);
+    } catch (err) {
+      setError((prev) => ({ ...prev, payments: err.message }));
+    } finally {
+      setLoading((prev) => ({ ...prev, payments: false }));
+    }
+  };
+
+  const fetchAssignedCompanies = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, companies: true }));
+      const response = await fetch(
+        `${API_BASE_URL}/cars/${car.car_id}/companies`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch assigned companies");
+
+      const data = await response.json();
+      setAssignedCompanies(data.companies || []);
+    } catch (err) {
+      setError((prev) => ({ ...prev, companies: err.message }));
+    } finally {
+      setLoading((prev) => ({ ...prev, companies: false }));
+    }
+  };
 
   if (!car) return null;
 
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-8 overflow-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => navigate('/fleet')}
-            className="text-blue-500 hover:text-blue-700"
-          >
-            ← Back to Fleet
-          </button>
-          <h1 className="text-2xl font-bold">Car Details</h1>
-        </div>
+        <div className="flex h-screen">
+          <div className="flex-1 p-8 overflow-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+              <button
+                onClick={() => navigate("/fleet")}
+                className="text-blue-500 hover:text-blue-700 flex items-center"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Back to Fleet
+              </button>
+              <h1 className="text-2xl font-bold">Car Details</h1>
+            </div>
 
-        {/* Car Details Card */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Vehicle Information</h2>
-                <div className="space-y-3">
+            {/* Car Details Card */}
+            <div className="bg-white rounded-lg shadow mb-6">
+              <div className="p-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Vehicle Information */}
                   <div>
-                    <label className="text-gray-600">Car ID:</label>
-                    <p className="font-medium">{car.car_id}</p>
+                    <h2 className="text-xl font-semibold mb-4">
+                      Vehicle Information
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow label="Car ID" value={car.car_id} />
+                      <DetailRow label="Car Name" value={car.car_name} />
+                      <DetailRow label="Car Model" value={car.car_model} />
+                      <DetailRow label="Car Type" value={car.type_of_car} />
+                      <DetailRow
+                        label="Induction Date"
+                        value={new Date(
+                          car.induction_date
+                        ).toLocaleDateString()}
+                      />
+                    </div>
                   </div>
+
+                  {/* Driver Information */}
                   <div>
-                    <label className="text-gray-600">Name:</label>
-                    <p className="font-medium">{car.car_name}</p>
+                    <h2 className="text-xl font-semibold mb-4">
+                      Driver Details
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow label="Driver Name" value={car.driver_name} />
+                      <DetailRow
+                        label="Driver Contact"
+                        value={car.driver_number}
+                      />
+                    </div>
                   </div>
+
+                  {/* Owner Information */}
                   <div>
-                    <label className="text-gray-600">Model:</label>
-                    <p className="font-medium">{car.car_model}</p>
+                    <h2 className="text-xl font-semibold mb-4">
+                      Owner Details
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow label="Owner Name" value={car.owner_name} />
+                      <DetailRow
+                        label="Owner Contact"
+                        value={car.owner_number}
+                      />
+                      <DetailRow
+                        label="Account Number"
+                        value={car.owner_account_number}
+                      />
+                      <DetailRow label="IFSC Code" value={car.ifsc_code} />
+                    </div>
                   </div>
+
+                  {/* Address Information */}
                   <div>
-                    <label className="text-gray-600">Last Service Date:</label>
-                    <p className="font-medium">
-                      {new Date(car.DateOfService).toLocaleDateString()}
-                    </p>
+                    <h2 className="text-xl font-semibold mb-4">Address</h2>
+                    <div className="space-y-3">
+                      <DetailRow label="Full Address" value={car.address} />
+                    </div>
                   </div>
                 </div>
               </div>
-              
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Additional Details</h2>
-                {/* Add more car details here */}
-              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Assigned Companies Section */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Assigned Companies</h2>
+              <button
+                onClick={() => setIsAssignCompanyModalOpen(true)}
+                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Assign to Company
+              </button>
+            </div>
+
+            {loading.companies ? (
+              <div className="text-center py-4">
+                Loading assigned companies...
+              </div>
+            ) : error.companies ? (
+              <div className="text-red-500 text-center py-4">
+                {error.companies}
+              </div>
+            ) : assignedCompanies.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">
+                No companies assigned
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Company Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Assignment Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {assignedCompanies.map((company) => (
+                      <tr key={company.company_id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {company.company_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {new Date(
+                            company.assignment_date
+                          ).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              company.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {company.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              /* Handle unassign */
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Unassign
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -96,19 +275,23 @@ const CarDetails = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Payment History</h2>
               <button
-                onClick={() => {/* Handle add payment */}}
+                onClick={() => setIsAddPaymentModalOpen(true)}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
               >
                 Add Payment
               </button>
             </div>
 
-            {loading ? (
+            {loading.payments ? (
               <div className="text-center py-4">Loading payment history...</div>
-            ) : error ? (
-              <div className="text-red-500 text-center py-4">{error}</div>
+            ) : error.payments ? (
+              <div className="text-red-500 text-center py-4">
+                {error.payments}
+              </div>
             ) : paymentHistory.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No payment history available</p>
+              <p className="text-gray-500 text-center py-4">
+                No payment history available
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full">
@@ -121,33 +304,42 @@ const CarDetails = () => {
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Type
+                        Payment Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paymentHistory.map((payment) => (
-                      <tr key={payment.id}>
+                      <tr key={payment.payment_id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {new Date(payment.date).toLocaleDateString()}
+                          {new Date(payment.payment_date).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          ${payment.amount}
+                          ${parseFloat(payment.amount).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {payment.type}
+                          {new Date(payment.payment_date).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            payment.status === 'paid' 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {payment.status}
-                          </span>
+                          <button
+                            onClick={() => {
+                              /* Handle delete */
+                            }}
+                            className="text-red-600 hover:text-red-900 mr-4"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => {
+                              /* Handle edit */
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Edit
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -157,6 +349,25 @@ const CarDetails = () => {
             )}
           </div>
         </div>
+
+        {/* Add Payment Modal */}
+        {isAddPaymentModalOpen && (
+          <AddCarPaymentModal
+            isOpen={isAddPaymentModalOpen}
+            onClose={() => setIsAddPaymentModalOpen(false)}
+            carId={car.car_id}
+            onPaymentAdded={fetchPaymentHistory}
+          />
+        )}
+
+        {isAssignCompanyModalOpen && (
+          <AssignCarToCompanyModal
+            isOpen={isAssignCompanyModalOpen}
+            onClose={() => setIsAssignCompanyModalOpen(false)}
+            carId={car.car_id}
+            onCompaniesAssigned={fetchAssignedCompanies}
+          />
+        )}
       </div>
     </div>
   );
