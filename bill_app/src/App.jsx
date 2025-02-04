@@ -15,6 +15,8 @@ import Settings from "./components/Settings";
 import Fleet from "./components/Fleet";
 import CarDetails from "./pages/CarDetails";
 import ClientDetails from "./pages/ClientDetails";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -32,6 +34,8 @@ function App() {
             <Route path="/lander" element={<Lander />} />
             <Route path="/fleet/details" element={<CarDetails />} />
             <Route path="/clients/details" element={<ClientDetails />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
           </Routes>
         </div>
       </Router>
