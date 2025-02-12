@@ -22,12 +22,12 @@ const Sidebar = () => {
                 </div>
             </div>
         </div> */}
-            <div className="w-64 h-screen sticky top-0 bg-gray-800 text-white p-4">
+            <div className="w-64 h-screen sticky top-0 bg-[#3b90c4] text-white p-4">
                 
                 <h1 className="text-lg font-bold">Lander</h1>
                     <nav className="  flex flex-col space-y-2">
                        
-                        <Link to={'/'} className="p-2 rounded hover:bg-gray-700">Dashboard</Link>
+                        <Link to={'/dashboard'} className="p-2 rounded hover:bg-gray-700">Dashboard</Link>
                         <Link to={'/invoices'} className="p-2 rounded hover:bg-gray-700">Invoices</Link>
                         <Link to={'/clients'} className="p-2 rounded hover:bg-gray-700">Clients</Link>
                         <Link to={'/reports'} className="p-2 rounded hover:bg-gray-700">Reports</Link>

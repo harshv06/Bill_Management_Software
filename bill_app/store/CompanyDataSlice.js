@@ -1,11 +1,12 @@
 // CompanyDataSlice.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import Config from "../src/utils/GlobalConfig";
 
 export const fetchCompanyData = createAsyncThunk(
   "CompanyData/fetchCompanyData",
   async ({ page = 1, limit = 5 } = {}) => {
     const response = await fetch(
-      `http://192.168.0.106:5000/api/getAllCompanies?page=${page}&limit=${limit}`,
+      `${Config.API_BASE_URL}/getAllCompanies?page=${page}&limit=${limit}`,
       {
         method: "GET",
         headers: {
@@ -20,10 +21,10 @@ export const fetchCompanyData = createAsyncThunk(
       return {
         ...data,
         currentPage: page,
-        pages: Math.ceil(data.total / limit)
+        pages: Math.ceil(data.total / limit),
       };
     } else {
-      throw new Error('Failed to fetch companies');
+      throw new Error("Failed to fetch companies");
     }
   }
 );
@@ -33,7 +34,7 @@ const initialState = {
     companies: [],
     total: 0,
     currentPage: 1,
-    pages: 1
+    pages: 1,
   },
   loading: false,
   error: null,

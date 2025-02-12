@@ -165,7 +165,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
       head: [["Payment Date", "Amount", "Notes"]],
       body: advancePaymentList.map((payment) => [
         payment.payment_date.toLocaleDateString(),
-        `₹${payment.amount.toFixed(2)}`,
+        `${payment.amount.toFixed(2)}`,
         payment.notes || "N/A",
       ]),
       theme: "striped",
@@ -178,11 +178,11 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
       body: [
         [
           "Daily Rate",
-          `₹${calculationResult.salaryDetails.dailyRate.toFixed(2)}`,
+          `${calculationResult.salaryDetails.dailyRate.toFixed(2)}`,
         ],
         [
           "Working Days Rate",
-          `₹${calculationResult.salaryDetails.workingDaysRate.toFixed(2)}`,
+          `${calculationResult.salaryDetails.workingDaysRate.toFixed(2)}`,
         ],
         [
           "Total Working Days",
@@ -194,7 +194,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
         ],
         [
           "Gross Salary",
-          `₹${calculationResult.salaryDetails.grossSalary.toFixed(2)}`,
+          `${calculationResult.salaryDetails.grossSalary.toFixed(2)}`,
         ],
       ],
       theme: "plain",
@@ -206,25 +206,25 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
       body: [
         [
           "Tax Deduction",
-          `₹${calculationResult.deductionDetails.taxDeduction.toFixed(2)}`,
+          `${calculationResult.deductionDetails.taxDeduction.toFixed(2)}`,
         ],
         [
           "Holiday Deduction",
-          `₹${calculationResult.deductionDetails.holidayDeduction.toFixed(2)}`,
+          `${calculationResult.deductionDetails.holidayDeduction.toFixed(2)}`,
         ],
         [
           "Penalty Deduction",
-          `₹${calculationResult.deductionDetails.penaltyDeduction.toFixed(2)}`,
+          `${calculationResult.deductionDetails.penaltyDeduction.toFixed(2)}`,
         ],
         [
           "Advance Payment Total",
-          `₹${calculationResult.deductionDetails.advancePaymentTotal.toFixed(
+          `${calculationResult.deductionDetails.advancePaymentTotal.toFixed(
             2
           )}`,
         ],
         [
           "Total Deductions",
-          `₹${calculationResult.deductionDetails.totalDeductions.toFixed(2)}`,
+          `${calculationResult.deductionDetails.totalDeductions.toFixed(2)}`,
         ],
       ],
       theme: "plain",
@@ -236,7 +236,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
       body: [
         [
           "Net Salary",
-          `₹${calculationResult.finalDetails.netSalary.toFixed(2)}`,
+          `${calculationResult.finalDetails.netSalary.toFixed(2)}`,
         ],
       ],
       theme: "plain",
@@ -409,7 +409,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
                           {payment.payment_date.toLocaleDateString()}
                         </td>
                         <td className="border p-2">
-                          ₹{payment.amount.toFixed(2)}
+                          {payment.amount.toFixed(2)}
                         </td>
                         <td className="border p-2">{payment.notes || "N/A"}</td>
                       </tr>
@@ -418,7 +418,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
                 </table>
                 <div className="mt-2 text-right">
                   <strong>
-                    Total Advance Payments: ₹
+                    Total Advance Payments: 
                     {calculateTotalAdvancePayments().toFixed(2)}
                   </strong>
                 </div>

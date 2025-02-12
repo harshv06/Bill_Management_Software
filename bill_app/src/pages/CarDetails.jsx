@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar";
 import AddCompanyPaymentModal from "../components/Modals/AddCompanyPaymentModal";
 import AddCarPaymentModal from "../components/Modals/AddCarPaymentModal";
 import AssignCarToCompanyModal from "../components/Modals/CarModals/AssignCarToCompanyModal";
+import ConfirmationModal from "../components/Modals/ConfirmationModal";
 
 const CarDetails = () => {
   const location = useLocation();
@@ -23,12 +24,16 @@ const CarDetails = () => {
     companies: null,
   });
   const [isAddPaymentModalOpen, setIsAddPaymentModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState(null);
 
   // Reusable component for displaying detail rows
 const DetailRow = ({ label, value }) => (
-  <div className="flex justify-between">
-    <span className="text-gray-600 font-medium">{label}:</span>
-    <span className="text-gray-800 font-semibold">{value || 'N/A'}</span>
+  <div className="detail-row">
+    <span className="text-gray-600 font-medium text-sm">{label}:</span>
+    <span className="text-gray-800 font-semibold text-base">
+      {value || "N/A"}
+    </span>
   </div>
 );
 
@@ -80,6 +85,53 @@ const DetailRow = ({ label, value }) => (
     } finally {
       setLoading((prev) => ({ ...prev, companies: false }));
     }
+  };
+  const handleDeletePayment = async (payment) => {
+    try {
+      // Ensure payment_id is used
+      const paymentId = paymentToDelete?.payment_id;
+
+      // Validate payment ID
+      if (!paymentId) {
+        console.error("Invalid payment ID");
+        return;
+      }
+
+      // Perform delete request
+      const response = await fetch(`${API_BASE_URL}/cars/payments/delete/${paymentId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // Check response status
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete payment");
+      }
+
+      // Parse response
+      const data = await response.json();
+      setIsConfirmationModalOpen(false);
+      fetchPaymentHistory()
+    } catch (error) {
+      console.error("Failed to delete payment", error);
+      // Show error notification
+      // toast.error(error.message);
+    }
+  };
+
+  // Trigger delete confirmation
+  const confirmDeletePayment = (payment) => {
+    setPaymentToDelete(payment);
+    setIsConfirmationModalOpen(true);
+  };
+
+  // Cancel delete
+  const cancelDeletePayment = () => {
+    setIsConfirmationModalOpen(false);
+    setPaymentToDelete(null);
   };
 
   if (!car) return null;
@@ -326,7 +378,7 @@ const DetailRow = ({ label, value }) => (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => {
-                              /* Handle delete */
+                              confirmDeletePayment(payment);
                             }}
                             className="text-red-600 hover:text-red-900 mr-4"
                           >
@@ -349,6 +401,23 @@ const DetailRow = ({ label, value }) => (
             )}
           </div>
         </div>
+
+        {
+          /* Confirmation Modal */
+          isConfirmationModalOpen && (
+            <ConfirmationModal
+              isOpen={isConfirmationModalOpen}
+              onClose={()=> setIsConfirmationModalOpen(false)}
+              onConfirm={handleDeletePayment}
+              title="Confirm Payment Deletion"
+              message={`Are you sure you want to delete the payment of $${
+                paymentToDelete
+                  ? parseFloat(paymentToDelete.amount).toFixed(2)
+                  : ""
+              }?`}
+            />
+          )
+        }
 
         {/* Add Payment Modal */}
         {isAddPaymentModalOpen && (
