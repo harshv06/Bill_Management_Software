@@ -5,55 +5,7 @@ import { fetchCompanyData } from "../../store/CompanyDataSlice";
 import { useNavigate } from "react-router-dom";
 import AddCompanyModal from "./Modals/AddCompanyModal";
 import EditCompanyModal from "./Modals/EditCompanyModal";
-// import { HomeIcon, UserIcon, CogIcon } from '@heroicons/react/outline';
-
-const cl = [
-  {
-    client_id: "1",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "2",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "3",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "4",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "5",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "6",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "7",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "8",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-  {
-    client_id: "9",
-    client_name: "Amazon Pvt Limited",
-    client_address: "Silicon valley, South africa, 0689",
-  },
-];
+import Config from "../utils/GlobalConfig.js";
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -61,36 +13,47 @@ const Clients = () => {
   const { data, loading, error } = useSelector((state) => state.CompanyData);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(10);
   const [editModalData, setEditModalData] = useState({
     isOpen: false,
     company: null,
   });
 
-  const API_BASE_URL = "http://172.20.10.3:5000/api/getAllCompanies";
-
   useEffect(() => {
-    loadCompanies(currentPage);
-  }, [currentPage, dispatch]);
-
-  const loadCompanies = (page) => {
     dispatch(
       fetchCompanyData({
-        page,
+        page: currentPage,
         limit: itemsPerPage,
       })
     );
+  }, [currentPage, dispatch]);
+
+  const handleAdd = async (companyData) => {
+    try {
+      const response = await fetch(`${Config.API_BASE_URL}/addCompany`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(companyData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add company");
+      }
+
+      dispatch(fetchCompanyData());
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Error adding company:", error);
+      alert("Failed to add company");
+    }
   };
 
-  useEffect(() => {
-    dispatch(fetchCompanyData());
-  }, [dispatch]);
-
-  // Add the handleEdit function
   const handleEdit = async (updatedData) => {
     try {
       const response = await fetch(
-        `http://192.168.0.106:5000/api/updateCompany/${editModalData.company.company_id}`,
+        `${Config.API_BASE_URL}/updateCompany/${editModalData.company.company_id}`,
         {
           method: "PUT",
           headers: {
@@ -137,6 +100,7 @@ const Clients = () => {
   const navigateToCompanyDetails = (company) => {
     navigate("/clients/details", { state: { company } });
   };
+
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -145,7 +109,7 @@ const Clients = () => {
           <div>
             <h1 className="text-2xl font-bold">Manage Clients</h1>
             <p className="text-gray-600 mt-1">
-              You can add, remove or edit your clients here.
+              View and manage your client companies
             </p>
           </div>
           <button
@@ -169,12 +133,10 @@ const Clients = () => {
           ) : (
             <div>
               {/* Headers */}
-              <div className="grid grid-cols-6 gap-8 p-4 font-bold bg-gray-50 border-b">
-                <div>Company ID</div>
-                <div>Name</div>
-                <div className="col-span-1">Email</div>
-                <div className="col-span-1">Phone</div>
-                <div>Status</div>
+              <div className="grid grid-cols-4 gap-4 p-4 font-bold bg-gray-50 border-b">
+                <div>Company Name</div>
+                <div>Client Type</div>
+                <div>Contact</div>
                 <div>Actions</div>
               </div>
 
@@ -183,44 +145,47 @@ const Clients = () => {
                 {data?.companies?.map((company) => (
                   <li
                     key={company.company_id}
-                    className="grid grid-cols-6 gap-8 p-6 hover:bg-gray-50 items-center cursor-pointer"
+                    className="grid grid-cols-4 gap-4 p-4 hover:bg-gray-50 items-center cursor-pointer"
                     onClick={() => navigateToCompanyDetails(company)}
                   >
-                    <div className="truncate">
-                      {company.registration_number}
+                    <div className="flex items-center">
+                      <div>
+                        <p className="font-semibold">{company.company_name}</p>
+                        <p className="text-sm text-gray-500">
+                          {company.gst_number}
+                        </p>
+                      </div>
                     </div>
-                    <div className="truncate">{company.company_name}</div>
-                    <div className="truncate col-span-1">{company.email}</div>
-                    <div className="truncate col-span-1">{company.phone}</div>
                     <div>
-                      <span
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                          company.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {company.status}
+                      <span className="capitalize">
+                        {company.client_type.replace("_", " ")}
                       </span>
                     </div>
+                    <div>
+                      <p>{company.email}</p>
+                      <p className="text-sm text-gray-500">{company.phone}</p>
+                    </div>
                     <div
-                      className="flex gap-4"
+                      className="flex items-center space-x-2"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
-                        onClick={() => handleDelete(company.company_id)}
-                        className="text-red-500 hover:text-red-700 font-medium"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={() => {
-                          /* Handle edit */
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setEditModalData({ isOpen: true, company });
                         }}
                         className="text-blue-500 hover:text-blue-700 font-medium"
                       >
                         Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(company.company_id);
+                        }}
+                        className="text-red-500 hover:text-red-700 font-medium"
+                      >
+                        Delete
                       </button>
                     </div>
                   </li>
@@ -230,6 +195,7 @@ const Clients = () => {
           )}
         </div>
 
+        {/* Pagination */}
         {data?.total > itemsPerPage && (
           <div className="mt-4 flex justify-between items-center">
             <div className="text-gray-600">
@@ -250,39 +216,19 @@ const Clients = () => {
                 Previous
               </button>
 
-              {Array.from({ length: data.pages }, (_, i) => {
-                // Show limited page numbers with ellipsis
-                if (
-                  i === 0 || // First page
-                  i === data.pages - 1 || // Last page
-                  (i >= currentPage - 2 && i <= currentPage) || // 2 pages before current
-                  (i >= currentPage && i <= currentPage + 1) // 1 page after current
-                ) {
-                  return (
-                    <button
-                      key={i + 1}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-1 rounded ${
-                        currentPage === i + 1
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-200 hover:bg-gray-300"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                } else if (
-                  i === 1 || // Show ellipsis after first page
-                  i === data.pages - 2 // Show ellipsis before last page
-                ) {
-                  return (
-                    <span key={i} className="px-2">
-                      ...
-                    </span>
-                  );
-                }
-                return null;
-              })}
+              {Array.from({ length: data.pages }, (_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`px-3 py-1 rounded ${
+                    currentPage === i + 1
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200 hover:bg-gray-300"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
 
               <button
                 onClick={() =>
@@ -306,33 +252,11 @@ const Clients = () => {
           <AddCompanyModal
             isOpen={isAddModalOpen}
             onClose={() => setIsAddModalOpen(false)}
-            onAdd={async (companyData) => {
-              try {
-                const response = await fetch(
-                  `http://192.168.0.106:5000/api/addCompany`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(companyData),
-                  }
-                );
-
-                if (!response.ok) {
-                  throw new Error("Failed to add company");
-                }
-
-                dispatch(fetchCompanyData());
-                setIsAddModalOpen(false);
-              } catch (error) {
-                console.error("Error adding company:", error);
-                alert("Failed to add company");
-              }
-            }}
+            onAdd={handleAdd}
           />
         )}
 
+        {/* Edit Modal Component */}
         {editModalData.isOpen && (
           <EditCompanyModal
             isOpen={editModalData.isOpen}

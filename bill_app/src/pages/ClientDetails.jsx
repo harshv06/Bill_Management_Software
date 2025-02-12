@@ -5,6 +5,8 @@ import Sidebar from "../components/Sidebar";
 // import AddPaymentModal from "../components/Modals/AddPaymentModal";
 import PaymentHistorySection from "../components/Payment/PaymentHistorySection";
 import AddCompanyPaymentModal from "../components/Modals/AddCompanyPaymentModal";
+import Config from "../utils/GlobalConfig";
+import InvoiceList from "../components/Modals/InvoiceList";
 
 const ClientDetails = () => {
   const location = useLocation();
@@ -24,7 +26,7 @@ const ClientDetails = () => {
     paymentMethod: "",
   });
 
-  const [total_revenue,setTotalRevenue]=useState(0)
+  const [total_revenue, setTotalRevenue] = useState(0);
 
   const API_BASE_URL = "http://192.168.0.106:5000/api";
 
@@ -57,7 +59,7 @@ const ClientDetails = () => {
       });
 
       const response = await fetch(
-        `${API_BASE_URL}/getPaymentHistory/${company.company_id}?${queryParams}`
+        `${Config.API_BASE_URL}/getPaymentHistory/${company.company_id}?${queryParams}`
       );
 
       if (!response.ok) {
@@ -70,8 +72,8 @@ const ClientDetails = () => {
         setPaymentHistory(data.data.payments.reverse());
         setTotalPages(data.data.pagination.totalPages);
         setSummary(data.data.summary);
-        setTotalRevenue(data.data.summary.totalAmount)
-        console.log(data.data)
+        setTotalRevenue(data.data.summary.totalAmount);
+        console.log("Data: ", data.data);
       } else {
         throw new Error(data.message || "Failed to fetch payment history");
       }
@@ -207,7 +209,7 @@ const ClientDetails = () => {
             </button>
             <h1 className="text-2xl font-bold">Client Details</h1>
           </div>
-          <button
+          {/* <button
             onClick={() => setIsAddPaymentModalOpen(true)}
             className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
@@ -224,27 +226,36 @@ const ClientDetails = () => {
                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
             </svg>
-            Add Payment
-          </button>
+            Create Invoice
+          </button> */}
         </div>
 
         {/* Company Information Card */}
         <div className="bg-white rounded-lg shadow-md mb-6">
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-6">Company Information</h2>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+            <div className="grid md:grid-cols-3 gap-x-8 gap-y-6">
+              {/* Basic Information */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Company Name
                 </label>
-                <p className="text-lg">{company.company_name}</p>
+                <p className="text-lg font-semibold">{company.company_name}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Registration Number
+                  GST Number
                 </label>
-                <p className="text-lg">{company.registration_number}</p>
+                <p className="text-lg">{company.gst_number || "N/A"}</p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  PAN Number
+                </label>
+                <p className="text-lg">{company.pan_number || "N/A"}</p>
+              </div>
+
+              {/* Contact Information */}
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Email Address
@@ -259,32 +270,40 @@ const ClientDetails = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Status
+                  Client Type
                 </label>
-                <span
-                  className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
-                    company.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {company.status}
+                <span className="inline-flex px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 capitalize">
+                  {company.client_type.replace("_", " ")}
                 </span>
               </div>
-              <div>
+
+              {/* Revenue */}
+              <div className="col-span-full">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Total Revenue
                 </label>
-                <p className="text-lg">
-                  {total_revenue}
+                <p className="text-2xl font-bold text-green-600">
+                  ₹{total_revenue.toLocaleString()}
                 </p>
               </div>
+            </div>
+
+            {/* Full Address */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Full Address
+              </label>
+              <p className="text-lg">
+                {company.address || "No address provided"}
+              </p>
             </div>
           </div>
         </div>
 
+        <InvoiceList companyId={company.company_id} />
+
         {/* Payment History Card */}
-        <PaymentHistorySection
+        {/* <PaymentHistorySection
           payments={paymentHistory}
           loading={loading}
           error={error}
@@ -296,17 +315,17 @@ const ClientDetails = () => {
           onDelete={handleDelete}
           onEdit={handleEdit}
           onViewReceipt={handleViewReceipt}
-        />
-        {/* Add Payment Modal */}
+        /> */}
 
-        {isAddPaymentModalOpen && (
+        {/* Add Payment Modal */}
+        {/* {isAddPaymentModalOpen && (
           <AddCompanyPaymentModal
             isOpen={isAddPaymentModalOpen}
             onClose={() => setIsAddPaymentModalOpen(false)}
             companyId={company.company_id}
             onPaymentAdded={fetchPaymentHistory}
           />
-        )}
+        )} */}
       </div>
     </div>
   );
