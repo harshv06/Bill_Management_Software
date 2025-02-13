@@ -56,6 +56,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/d" element={<Dashboard/>}/>
 
             {/* Protected Routes with RBAC */}
             <Route
