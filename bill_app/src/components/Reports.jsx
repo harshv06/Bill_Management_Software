@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchFleetData } from '../../store/FleetDataSlice';
 import CarAllocationModal from './Modals/ReportModals/PaymentInformationModal';
+import Config from '../utils/GlobalConfig';
 // import CarAllocationModal from '../components/Modals/CarAllocationModal';
 
 const Reports = () => {
@@ -16,7 +17,7 @@ const Reports = () => {
   const dispatch=useDispatch();
   const { data, loading, error } = useSelector((state) => state.FleetData);
 
-  const API_BASE_URL = "http://192.168.0.106:5000/api";
+  // const API_BASE_URL = "http://192.168.0.106:5000/api";
 
   useEffect(() => {
     dispatch(fetchFleetData());

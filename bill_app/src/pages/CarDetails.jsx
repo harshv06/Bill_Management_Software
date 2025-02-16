@@ -6,6 +6,7 @@ import AddCompanyPaymentModal from "../components/Modals/AddCompanyPaymentModal"
 import AddCarPaymentModal from "../components/Modals/AddCarPaymentModal";
 import AssignCarToCompanyModal from "../components/Modals/CarModals/AssignCarToCompanyModal";
 import ConfirmationModal from "../components/Modals/ConfirmationModal";
+import Config from "../utils/GlobalConfig";
 
 const CarDetails = () => {
   const location = useLocation();
@@ -28,14 +29,14 @@ const CarDetails = () => {
   const [paymentToDelete, setPaymentToDelete] = useState(null);
 
   // Reusable component for displaying detail rows
-const DetailRow = ({ label, value }) => (
-  <div className="detail-row">
-    <span className="text-gray-600 font-medium text-sm">{label}:</span>
-    <span className="text-gray-800 font-semibold text-base">
-      {value || "N/A"}
-    </span>
-  </div>
-);
+  const DetailRow = ({ label, value }) => (
+    <div className="detail-row">
+      <span className="text-gray-600 font-medium text-sm">{label}:</span>
+      <span className="text-gray-800 font-semibold text-base">
+        {value || "N/A"}
+      </span>
+    </div>
+  );
 
   const API_BASE_URL = "http://192.168.0.106:5000/api";
 
@@ -47,14 +48,14 @@ const DetailRow = ({ label, value }) => (
     console.log(car);
 
     fetchPaymentHistory();
-    fetchAssignedCompanies();
+    // fetchAssignedCompanies();
   }, [car, navigate]);
 
   const fetchPaymentHistory = async () => {
     try {
       setLoading((prev) => ({ ...prev, payments: true }));
       const response = await fetch(
-        `${API_BASE_URL}/cars/payments/detail/${car.car_id}`
+        `${Config.API_BASE_URL}/cars/payments/detail/${car.car_id}`
       );
 
       if (!response.ok) throw new Error("Failed to fetch payment history");
@@ -98,12 +99,15 @@ const DetailRow = ({ label, value }) => (
       }
 
       // Perform delete request
-      const response = await fetch(`${API_BASE_URL}/cars/payments/delete/${paymentId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/cars/payments/delete/${paymentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       // Check response status
       if (!response.ok) {
@@ -114,7 +118,7 @@ const DetailRow = ({ label, value }) => (
       // Parse response
       const data = await response.json();
       setIsConfirmationModalOpen(false);
-      fetchPaymentHistory()
+      fetchPaymentHistory();
     } catch (error) {
       console.error("Failed to delete payment", error);
       // Show error notification
@@ -407,7 +411,7 @@ const DetailRow = ({ label, value }) => (
           isConfirmationModalOpen && (
             <ConfirmationModal
               isOpen={isConfirmationModalOpen}
-              onClose={()=> setIsConfirmationModalOpen(false)}
+              onClose={() => setIsConfirmationModalOpen(false)}
               onConfirm={handleDeletePayment}
               title="Confirm Payment Deletion"
               message={`Are you sure you want to delete the payment of $${

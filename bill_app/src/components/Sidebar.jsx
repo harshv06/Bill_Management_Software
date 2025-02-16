@@ -55,7 +55,7 @@ const Sidebar = () => {
 
 
                     </nav>
-                    <div className='flex space-x-1 mt-90'>
+                    {/* <div className='flex space-x-1 mt-90'>
                         <div className=' w-15 mr-3 '>
                             <img className='rounded-4xl shadow-2xl' src="https://imgs.search.brave.com/mu8DKvyus3h3nlEhzP-S8asSO4phnFo58dO221g-PHI/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzEwLzA2/L2NhLzEwMDZjYTYx/Y2U4MmE4ODA1MGMz/YzczNGJmYzllNDU2/LmpwZw" alt="" />
                         </div>
@@ -63,7 +63,7 @@ const Sidebar = () => {
                             <h1 className='font-semibold'>Harsh Chamar</h1>
                             <p className='text-sm'>Bhima, Koregaon</p>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </>

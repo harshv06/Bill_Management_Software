@@ -7,6 +7,7 @@ import { fetchFleetData } from "../../store/FleetDataSlice";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { PERMISSIONS } from "../config/permissions";
+import config from "../utils/GlobalConfig";
 
 const Fleet = () => {
   const dispatch = useDispatch();
@@ -61,8 +62,8 @@ const Fleet = () => {
         const response = await fetch(`${API_BASE_URL}/delete/${carId}`, {
           method: "DELETE",
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         });
 
         if (!response.ok) {
@@ -91,7 +92,7 @@ const Fleet = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify(carData),
       });
@@ -118,11 +119,11 @@ const Fleet = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/AddCar`, {
+      const response = await fetch(`${config.API_BASE_URL}/cars/AddCar`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify(carData),
       });

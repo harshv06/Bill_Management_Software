@@ -1,40 +1,53 @@
 // store/fleetDataSlice.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import Config from "../src/utils/GlobalConfig";
 
 const BASE_URL = "http://192.168.0.106:5000/";
 // const BASE_URL = "http://172.20.10.3:5000/";
 
 export const fetchFleetData = createAsyncThunk(
   "fleetData/fetchFleetData",
-  async ({ page = 1, limit = 10, search = '', sortBy = 'car_id', sortOrder = 'ASC' } = {}, { rejectWithValue }) => {
+  async (
+    {
+      page = 1,
+      limit = 10,
+      search = "",
+      sortBy = "car_id",
+      sortOrder = "ASC",
+    } = {},
+    { rejectWithValue }
+  ) => {
     try {
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
         search,
         sortBy,
-        sortOrder
+        sortOrder,
       }).toString();
 
-      const response = await fetch(`${BASE_URL}api/cars?${queryParams}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${Config.API_BASE_URL}/cars?${queryParams}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch fleet data');
+        throw new Error("Failed to fetch fleet data");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
-        console.log("Data:",data.data);
+
+      if (data.status === "success") {
+        console.log("Data:", data.data);
         return data.data;
       } else {
-        return rejectWithValue(data.message || 'Failed to fetch fleet data');
+        return rejectWithValue(data.message || "Failed to fetch fleet data");
       }
     } catch (error) {
       return rejectWithValue(error.message);
@@ -44,29 +57,29 @@ export const fetchFleetData = createAsyncThunk(
 
 // Add thunk for adding a car
 export const addCar = createAsyncThunk(
-  'fleetData/addCar',
+  "fleetData/addCar",
   async (carData, { rejectWithValue, dispatch }) => {
     try {
-      const response = await fetch(`${BASE_URL}api/cars/AddCar`, {
-        method: 'POST',
+      const response = await fetch(`${Config.API_BASE_URL}/cars/AddCar`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(carData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add car');
+        throw new Error("Failed to add car");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
+
+      if (data.status === "success") {
         // Refresh the car list after adding
         dispatch(fetchFleetData());
         return data.data;
       } else {
-        return rejectWithValue(data.message || 'Failed to add car');
+        return rejectWithValue(data.message || "Failed to add car");
       }
     } catch (error) {
       return rejectWithValue(error.message);
@@ -76,29 +89,29 @@ export const addCar = createAsyncThunk(
 
 // Add thunk for updating a car
 export const updateCar = createAsyncThunk(
-  'fleetData/updateCar',
+  "fleetData/updateCar",
   async ({ carId, carData }, { rejectWithValue, dispatch }) => {
     try {
-      const response = await fetch(`${BASE_URL}api/cars/update/${carId}`, {
-        method: 'PUT',
+      const response = await fetch(`${Config.API_BASE_URL}/cars/update/${carId}`, {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(carData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update car');
+        throw new Error("Failed to update car");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
+
+      if (data.status === "success") {
         // Refresh the car list after updating
         dispatch(fetchFleetData());
         return data.data;
       } else {
-        return rejectWithValue(data.message || 'Failed to update car');
+        return rejectWithValue(data.message || "Failed to update car");
       }
     } catch (error) {
       return rejectWithValue(error.message);
@@ -108,28 +121,28 @@ export const updateCar = createAsyncThunk(
 
 // Add thunk for deleting a car
 export const deleteCar = createAsyncThunk(
-  'fleetData/deleteCar',
+  "fleetData/deleteCar",
   async (carId, { rejectWithValue, dispatch }) => {
     try {
-      const response = await fetch(`${BASE_URL}api/cars/delete/${carId}`, {
-        method: 'DELETE',
+      const response = await fetch(`${Config.API_BASE_URL}/cars/delete/${carId}`, {
+        method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete car');
+        throw new Error("Failed to delete car");
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success') {
+
+      if (data.status === "success") {
         // Refresh the car list after deleting
         dispatch(fetchFleetData());
         return carId;
       } else {
-        return rejectWithValue(data.message || 'Failed to delete car');
+        return rejectWithValue(data.message || "Failed to delete car");
       }
     } catch (error) {
       return rejectWithValue(error.message);
@@ -144,14 +157,14 @@ const initialState = {
       total: 0,
       totalPages: 0,
       currentPage: 1,
-      limit: 10
-    }
+      limit: 10,
+    },
   },
   loading: false,
   error: null,
-  addCarStatus: 'idle',
-  updateCarStatus: 'idle',
-  deleteCarStatus: 'idle',
+  addCarStatus: "idle",
+  updateCarStatus: "idle",
+  deleteCarStatus: "idle",
 };
 
 const fleetDataSlice = createSlice({
@@ -159,9 +172,9 @@ const fleetDataSlice = createSlice({
   initialState,
   reducers: {
     resetStatus: (state) => {
-      state.addCarStatus = 'idle';
-      state.updateCarStatus = 'idle';
-      state.deleteCarStatus = 'idle';
+      state.addCarStatus = "idle";
+      state.updateCarStatus = "idle";
+      state.deleteCarStatus = "idle";
       state.error = null;
     },
   },
@@ -178,45 +191,45 @@ const fleetDataSlice = createSlice({
       })
       .addCase(fetchFleetData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Failed to fetch fleet data';
+        state.error = action.payload || "Failed to fetch fleet data";
       })
-      
+
       // Add car
       .addCase(addCar.pending, (state) => {
-        state.addCarStatus = 'loading';
+        state.addCarStatus = "loading";
         state.error = null;
       })
       .addCase(addCar.fulfilled, (state) => {
-        state.addCarStatus = 'succeeded';
+        state.addCarStatus = "succeeded";
       })
       .addCase(addCar.rejected, (state, action) => {
-        state.addCarStatus = 'failed';
+        state.addCarStatus = "failed";
         state.error = action.payload;
       })
-      
+
       // Update car
       .addCase(updateCar.pending, (state) => {
-        state.updateCarStatus = 'loading';
+        state.updateCarStatus = "loading";
         state.error = null;
       })
       .addCase(updateCar.fulfilled, (state) => {
-        state.updateCarStatus = 'succeeded';
+        state.updateCarStatus = "succeeded";
       })
       .addCase(updateCar.rejected, (state, action) => {
-        state.updateCarStatus = 'failed';
+        state.updateCarStatus = "failed";
         state.error = action.payload;
       })
-      
+
       // Delete car
       .addCase(deleteCar.pending, (state) => {
-        state.deleteCarStatus = 'loading';
+        state.deleteCarStatus = "loading";
         state.error = null;
       })
       .addCase(deleteCar.fulfilled, (state) => {
-        state.deleteCarStatus = 'succeeded';
+        state.deleteCarStatus = "succeeded";
       })
       .addCase(deleteCar.rejected, (state, action) => {
-        state.deleteCarStatus = 'failed';
+        state.deleteCarStatus = "failed";
         state.error = action.payload;
       });
   },
