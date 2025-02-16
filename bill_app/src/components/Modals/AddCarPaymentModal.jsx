@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Config from "../../utils/GlobalConfig";
 
 const AddCarPaymentModal = ({ isOpen, onClose, carId, onPaymentAdded }) => {
   const [formData, setFormData] = useState({
@@ -17,7 +18,7 @@ const AddCarPaymentModal = ({ isOpen, onClose, carId, onPaymentAdded }) => {
     setLoading(true);
     setError(null);
     try {
-      await fetch("http://192.168.0.106:5000/api/cars/payments", {
+      await fetch(`${Config.API_BASE_URL}/cars/payments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

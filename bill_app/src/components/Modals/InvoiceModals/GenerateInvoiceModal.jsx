@@ -26,14 +26,15 @@ const GenerateInvoiceModal = ({
     )}`,
     billDate: new Date().toLocaleDateString(),
     companyDetails: {
-      name: "MATOSHREE FLEET SOLUTIONS PRIVATE LIMITED",
+      name: "MATOSHREE FLEET SOLUTIONS PRIVATE \nLIMITED",
       address:
-        "Office No. 201, 2nd Floor, Sai Corporate Park,\nNear Pune-Solapur Highway, Hadapsar, Pune - 411028",
+        "Office No. 201, 2nd Floor,\nSai Corporate Park, Near Pune-Solapur Highway,\nHadapsar, Pune - 411028",
       contact: "+91 9876543210",
       email: "info@matoshreesolutions.com",
       pan: "AAQCM3825L",
       gst: "27AAQCM3825L1ZW",
       stateCode: "27",
+      date: new Date().toLocaleDateString(),
     },
     customerDetails: {
       company_id: companyId || "", // Use passed companyId
@@ -309,7 +310,7 @@ const GenerateInvoiceModal = ({
       doc.setFont("arial", "normal");
 
       // To Section (Customer Details)
-      doc.rect(30, letterheadHeight + 50, 270, 70);
+      doc.rect(30, letterheadHeight + 50, 270, 110);
       // doc.rect(30, letterheadHeight + 40, 260, 80);
       doc.text("To:", 40, letterheadHeight + 75);
       doc.setFont("arial", "bold");
@@ -325,37 +326,51 @@ const GenerateInvoiceModal = ({
       );
 
       // Invoice Details Section
-      doc.rect(300, letterheadHeight + 50, 250, 70);
+      doc.rect(300, letterheadHeight + 50, 250, 110);
       doc.text("From:", 310, letterheadHeight + 75);
       // doc.text("Invoice Details:", 310, letterheadHeight + 75);
+      doc.setFont("arial", "bold");
       doc.text(
-        `Bill No: ${invoiceDetails.companyDetails.name}`,
+        `${invoiceDetails.companyDetails.name}`,
         310,
         letterheadHeight + 90
       );
+      doc.setFont("arial", "normal");
       doc.text(
-        `Bill Date: ${invoiceDetails.companyDetails.address}`,
+        `Registered Address: ${invoiceDetails.companyDetails.address}`,
         310,
-        letterheadHeight + 105
+        letterheadHeight + 120
       );
 
       // Additional Details
+      doc.rect(30, letterheadHeight + 160, 270, 50);
       doc.text(
         `GST No: ${invoiceDetails.customerDetails.gst || "N/A"}`,
-        30,
-        letterheadHeight + 140
+        40,
+        letterheadHeight + 175
       );
       doc.text(
         `PAN No: ${invoiceDetails.companyDetails.pan}`,
-        300,
-        letterheadHeight + 140
+        40,
+        letterheadHeight + 190
       );
       doc.text(
         `State Code: ${invoiceDetails.companyDetails.stateCode}`,
-        500,
-        letterheadHeight + 140
+        40,
+        letterheadHeight + 205
       );
 
+      doc.rect(300, letterheadHeight + 160, 250, 50);
+      doc.text(
+        `Invoice Date: ${invoiceDetails.companyDetails.date || "N/A"}`,
+        310,
+        letterheadHeight + 175
+      );
+      doc.text(
+        `Invoice No: ${invoiceDetails.billNumber}`,
+        310,
+        letterheadHeight + 190
+      );
       // Product Table
       const tableColumn = [
         "#",
@@ -375,7 +390,8 @@ const GenerateInvoiceModal = ({
       ]);
 
       doc.autoTable({
-        startY: letterheadHeight + 160,
+        startY: letterheadHeight + 230,
+        startX: 20,
         head: [tableColumn],
         body: tableRows,
         theme: "grid",
@@ -395,7 +411,7 @@ const GenerateInvoiceModal = ({
           2: { width: 50 },
           3: { width: 50 },
           4: { width: 50 },
-          5: { width: 70 },
+          5: { width: 50 },
         },
       });
 
@@ -403,51 +419,56 @@ const GenerateInvoiceModal = ({
       const finalY = doc.previousAutoTable.finalY + 20;
 
       doc.setFontSize(10);
-      doc.text(`Total Amount: ₹${formatNumber(totalAmount)}`, 30, finalY);
+      doc.text(`Total Amount: 1${formatNumber(totalAmount)}`, 30, finalY);
       doc.text(
-        `SGST @${sgstRate * 100}%: ₹${formatNumber(sgst)}`,
+        `SGST @${sgstRate * 100}%: 1${formatNumber(sgst)}`,
         30,
-        finalY + 15
+        finalY + 20
       );
       doc.text(
-        `CGST @${cgstRate * 100}%: ₹${formatNumber(cgst)}`,
+        `CGST @${cgstRate * 100}%: ${formatNumber(cgst)}`,
         30,
-        finalY + 30
+        finalY + 40
       );
 
       doc.setFont("arial", "bold");
-      doc.text(`Grand Total: ₹${formatNumber(grandTotal)}`, 30, finalY + 45);
+      doc.text(`Grand Total: ${formatNumber(grandTotal)}`, 30, finalY + 60);
 
-      // Amount in Words
-      doc.setFont("arial", "normal");
-      doc.text(`${convertToWords(Math.round(grandTotal))}`, 30, finalY + 60);
+      // // Amount in Words
+      // doc.setFont("arial", "normal");
+      // doc.text(`${convertToWords(Math.round(grandTotal))}`, 30, finalY + 60);
 
       // Additional Transaction Details
-      doc.setFont("arial", "normal");
+      doc.setFont("arial", "bold");
+      doc.rect(30, finalY + 70, 200, 150);
+      doc.text(`PAN No :-`, 35, finalY + 85);
+
+      doc.text(`${invoiceDetails.companyDetails.pan}`, 240, finalY + 85);
+
+      doc.text(`Provisional GST No :-`, 35, finalY + 100);
+
       doc.text(
-        `PAN No :- ${invoiceDetails.companyDetails.pan}`,
-        30,
-        finalY + 85
-      );
-      doc.text(
-        `Provisional GST No :- ${invoiceDetails.companyDetails.gst}`,
-        30,
+        `${invoiceDetails.customerDetails.gst || "N/A"}`,
+        240,
         finalY + 100
       );
-      doc.text("HSN /SAC code :- 996412", 30, finalY + 115);
-      doc.text(
-        "Nature of Transaction :- BUSINESS TO BUSINESS",
-        30,
-        finalY + 130
-      );
-      doc.text("Service Category :- EMPLOYEE TRANSPORTATION", 30, finalY + 145);
-      doc.text(
-        "Bank Name & Branch :- AMANORA PUNE MH 411028",
-        30,
-        finalY + 160
-      );
-      doc.text("Account No :- 2221262245805293", 30, finalY + 175);
-      doc.text("IFSC Code :- AUBL0002622", 30, finalY + 190);
+      doc.text("HSN /SAC code :-", 35, finalY + 115);
+      doc.text("996412", 240, finalY + 115);
+
+      doc.text("Nature of Transaction :-", 35, finalY + 130);
+
+      doc.text("BUSINESS TO BUSINESS", 240, finalY + 130);
+
+      doc.text("Service Category :-", 35, finalY + 145);
+      doc.text("EMPLOYEE TRANSPORTATION", 240, finalY + 145);
+      doc.text("Bank Name & Branch :-", 35, finalY + 160);
+      doc.text("AMANORA PUNE MH 411028", 240, finalY + 160);
+      doc.text("Account No :-", 35, finalY + 175);
+      doc.text("2221262245805293", 240, finalY + 175);
+      doc.text("IFSC Code :-", 35, finalY + 190);
+      doc.text("AUBL0002622", 240, finalY + 190);
+
+      doc.rect(230, finalY + 70, 270, 150);
 
       // Save the PDF
       doc.save(`invoice_${invoiceDetails.billNumber}.pdf`);
