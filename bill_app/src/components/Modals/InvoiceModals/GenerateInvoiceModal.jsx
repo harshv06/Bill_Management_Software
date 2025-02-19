@@ -16,6 +16,8 @@ const GenerateInvoiceModal = ({
 }) => {
   const [companies, setCompanies] = useState([]);
   const [isOtherCompany, setIsOtherCompany] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [products, setProducts] = useState([
     { description: "", hsn: "", quantity: 1, rate: "", amount: "" },
   ]);
@@ -45,6 +47,13 @@ const GenerateInvoiceModal = ({
     },
   });
 
+  const [gstRates, setGstRates] = useState({
+    sgst: 2.5,
+    cgst: 2.5,
+    igst: 5,
+    useIGST: false, // Toggle between SGST+CGST and IGST
+  });
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -64,47 +73,57 @@ const GenerateInvoiceModal = ({
   const saveInvoiceToDB = async (products, invoiceDetails) => {
     try {
       const token = localStorage.getItem("token");
-      // Calculate totals
       const totalAmount = products.reduce(
         (sum, p) => sum + (parseFloat(p.amount) || 0),
         0
       );
-      const sgstRate = 0.025;
-      const cgstRate = 0.025;
-      const sgst = Number((totalAmount * sgstRate).toFixed(2));
-      const cgst = Number((totalAmount * cgstRate).toFixed(2));
-      const grandTotal = Number((totalAmount + sgst + cgst).toFixed(2));
 
-      // Prepare invoice data
+      // Calculate GST based on selected rates
+      const gstAmount = gstRates.useIGST
+        ? {
+            igst: totalAmount * (gstRates.igst / 100),
+            sgst: 0,
+            cgst: 0,
+          }
+        : {
+            igst: 0,
+            sgst: totalAmount * (gstRates.sgst / 100),
+            cgst: totalAmount * (gstRates.cgst / 100),
+          };
+
+      const grandTotal =
+        totalAmount +
+        (gstRates.useIGST ? gstAmount.igst : gstAmount.sgst + gstAmount.cgst);
+
       const invoiceData = {
         invoice_number: invoiceDetails.billNumber,
         company_id: invoiceDetails.customerDetails.company_id,
         total_amount: totalAmount,
-        sgst_amount: sgst,
-        cgst_amount: cgst,
+        sgst_rate: gstRates.useIGST ? 0 : gstRates.sgst,
+        cgst_rate: gstRates.useIGST ? 0 : gstRates.cgst,
+        igst_rate: gstRates.useIGST ? gstRates.igst : 0,
+        sgst_amount: gstAmount.sgst,
+        cgst_amount: gstAmount.cgst,
+        igst_amount: gstAmount.igst,
         grand_total: grandTotal,
         status: "pending",
         invoice_date: new Date(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        // customer_details: JSON.stringify(invoiceDetails.customerDetails),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         customer_details: JSON.stringify(invoiceDetails.customerDetails),
         items: products,
       };
 
-      // Send to backend
       const response = await axios.post(
         `${Config.API_BASE_URL}/invoices`,
         invoiceData,
         {
           headers: {
-            Authorization: `Bearer ${token}`, // Add token to headers
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
       );
 
-      console.log("Invoice saved:", response);
-      // Notify parent component
       if (onInvoiceCreated) {
         onInvoiceCreated();
       }
@@ -186,31 +205,47 @@ const GenerateInvoiceModal = ({
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4",
-    });
+  // Add this at the top of your component
+  useEffect(() => {
+    // Preload the letterhead image
+    const img = new Image();
+    img.src = logoImage;
+  }, []);
 
-    // A4 dimensions in points
-    const pageWidth = 595.28;
-    const pageHeight = 841.89;
+  const generatePDF = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Load letterhead image
-    const letterheadImage = new Image();
-    letterheadImage.src = logoImage;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
 
-    letterheadImage.onload = () => {
-      // Add letterhead image at the top of the page
-      doc.addImage(
-        letterheadImage,
-        "PNG",
-        0, // x-coordinate
-        0, // y-coordinate
-        pageWidth, // width (full page width)
-        175 * (pageWidth / 991) // height (maintain aspect ratio)
-      );
+      const letterheadImage = new Image();
+
+      // A4 dimensions in points
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+      await new Promise((resolve, reject) => {
+        letterheadImage.onload = () => {
+          // Add letterhead image to PDF
+          doc.addImage(
+            letterheadImage,
+            "PNG",
+            0,
+            0,
+            pageWidth,
+            175 * (pageWidth / 991)
+          );
+          resolve();
+        };
+        letterheadImage.onerror = () => {
+          reject(new Error("Failed to load letterhead image"));
+        };
+        letterheadImage.src = logoImage;
+      });
 
       // Adjust startY to account for letterhead height
       const letterheadHeight = 175 * (pageWidth / 991);
@@ -220,21 +255,29 @@ const GenerateInvoiceModal = ({
         (sum, p) => sum + (parseFloat(p.amount) || 0),
         0
       );
-      const sgstRate = 0.025;
-      const cgstRate = 0.025;
-      const sgst = Number((totalAmount * sgstRate).toFixed(2));
-      const cgst = Number((totalAmount * cgstRate).toFixed(2));
-      const grandTotal = Number((totalAmount + sgst + cgst).toFixed(2));
+      const gstAmount = gstRates.useIGST
+        ? {
+            igst: totalAmount * (gstRates.igst / 100),
+            sgst: 0,
+            cgst: 0,
+          }
+        : {
+            igst: 0,
+            sgst: totalAmount * (gstRates.sgst / 100),
+            cgst: totalAmount * (gstRates.cgst / 100),
+          };
 
-      // Number formatting function with Indian number formatting
+      const grandTotal =
+        totalAmount +
+        (gstRates.useIGST ? gstAmount.igst : gstAmount.sgst + gstAmount.cgst);
+
+      // Number formatting function
       const formatNumber = (num, digits = 2) => {
         return num.toLocaleString("en-IN", {
           minimumFractionDigits: digits,
           maximumFractionDigits: digits,
         });
       };
-
-      // Convert number to words for grand total
       const convertToWords = (num) => {
         const a = [
           "",
@@ -292,7 +335,18 @@ const GenerateInvoiceModal = ({
         return result.trim() + " Only";
       };
 
-      // Invoice Title
+      doc.setFontSize(16);
+      doc.setFont("arial", "bold");
+      doc.rect(30, letterheadHeight + 20, 520, 30);
+      doc.text(
+        "TAX INVOICE",
+        doc.internal.pageSize.width / 2,
+        letterheadHeight + 40,
+        {
+          align: "center",
+        }
+      );
+
       doc.setFontSize(16);
       doc.setFont("arial", "bold");
       doc.rect(30, letterheadHeight + 20, 520, 30);
@@ -371,6 +425,7 @@ const GenerateInvoiceModal = ({
         310,
         letterheadHeight + 190
       );
+
       // Product Table
       const tableColumn = [
         "#",
@@ -419,17 +474,26 @@ const GenerateInvoiceModal = ({
       const finalY = doc.previousAutoTable.finalY + 20;
 
       doc.setFontSize(10);
-      doc.text(`Total Amount: 1${formatNumber(totalAmount)}`, 30, finalY);
-      doc.text(
-        `SGST @${sgstRate * 100}%: 1${formatNumber(sgst)}`,
-        30,
-        finalY + 20
-      );
-      doc.text(
-        `CGST @${cgstRate * 100}%: ${formatNumber(cgst)}`,
-        30,
-        finalY + 40
-      );
+      // Update the tax section in PDF
+      doc.text(`Total Amount: ₹${formatNumber(totalAmount)}`, 30, finalY);
+      if (gstRates.useIGST) {
+        doc.text(
+          `IGST @${gstRates.igst}%: ₹${formatNumber(gstAmount.igst)}`,
+          30,
+          finalY + 20
+        );
+      } else {
+        doc.text(
+          `SGST @${gstRates.sgst}%: ₹${formatNumber(gstAmount.sgst)}`,
+          30,
+          finalY + 20
+        );
+        doc.text(
+          `CGST @${gstRates.cgst}%: ₹${formatNumber(gstAmount.cgst)}`,
+          30,
+          finalY + 40
+        );
+      }
 
       doc.setFont("arial", "bold");
       doc.text(`Grand Total: ${formatNumber(grandTotal)}`, 30, finalY + 60);
@@ -475,10 +539,41 @@ const GenerateInvoiceModal = ({
       // addDataToDB(products, invoiceDetails);
       saveInvoiceToDB(products, invoiceDetails);
       onClose();
-    };
+    } catch (error) {
+      console.error("Error adding letterhead image:", error);
+      toast.error("Failed to add letterhead image");
+    }
+  };
 
-    // Trigger image loading
-    letterheadImage.src = logoImage;
+  const validateForm = () => {
+    // Basic validation
+    if (!invoiceDetails.customerDetails.company_id && !isOtherCompany) {
+      toast.error("Please select a company");
+      return false;
+    }
+
+    if (isOtherCompany) {
+      if (!invoiceDetails.customerDetails.name) {
+        toast.error("Please enter company name");
+        return false;
+      }
+      if (!invoiceDetails.customerDetails.address) {
+        toast.error("Please enter company address");
+        return false;
+      }
+    }
+
+    // Validate products
+    const invalidProducts = products.some(
+      (product) => !product.description || !product.rate || !product.quantity
+    );
+
+    if (invalidProducts) {
+      toast.error("Please fill all product details");
+      return false;
+    }
+
+    return true;
   };
 
   return (
@@ -673,21 +768,226 @@ const GenerateInvoiceModal = ({
             </tbody>
           </table>
 
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              GST Configuration
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="flex items-center space-x-4">
+                <input
+                  type="checkbox"
+                  id="useIGST"
+                  checked={gstRates.useIGST}
+                  onChange={(e) =>
+                    setGstRates((prev) => ({
+                      ...prev,
+                      useIGST: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="useIGST"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Use IGST
+                </label>
+              </div>
+
+              {!gstRates.useIGST ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SGST Rate (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={gstRates.sgst}
+                      onChange={(e) =>
+                        setGstRates((prev) => ({
+                          ...prev,
+                          sgst: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CGST Rate (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={gstRates.cgst}
+                      onChange={(e) =>
+                        setGstRates((prev) => ({
+                          ...prev,
+                          cgst: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    IGST Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={gstRates.igst}
+                    onChange={(e) =>
+                      setGstRates((prev) => ({
+                        ...prev,
+                        igst: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* GST Summary */}
+            <div className="mt-4 p-3 bg-white rounded-md shadow-sm">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Tax Summary
+              </h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">Total Amount:</span>
+                  <span className="ml-2 font-medium">
+                    ₹
+                    {products
+                      .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+                      .toFixed(2)}
+                  </span>
+                </div>
+                {!gstRates.useIGST ? (
+                  <>
+                    <div>
+                      <span className="text-gray-500">SGST Amount:</span>
+                      <span className="ml-2 font-medium">
+                        ₹
+                        {(
+                          products.reduce(
+                            (sum, p) => sum + (parseFloat(p.amount) || 0),
+                            0
+                          ) *
+                          (gstRates.sgst / 100)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">CGST Amount:</span>
+                      <span className="ml-2 font-medium">
+                        ₹
+                        {(
+                          products.reduce(
+                            (sum, p) => sum + (parseFloat(p.amount) || 0),
+                            0
+                          ) *
+                          (gstRates.cgst / 100)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <span className="text-gray-500">IGST Amount:</span>
+                    <span className="ml-2 font-medium">
+                      ₹
+                      {(
+                        products.reduce(
+                          (sum, p) => sum + (parseFloat(p.amount) || 0),
+                          0
+                        ) *
+                        (gstRates.igst / 100)
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-500">Grand Total:</span>
+                  <span className="ml-2 font-medium text-green-600">
+                    ₹
+                    {(
+                      products.reduce(
+                        (sum, p) => sum + (parseFloat(p.amount) || 0),
+                        0
+                      ) *
+                      (1 +
+                        (gstRates.useIGST
+                          ? gstRates.igst
+                          : gstRates.sgst + gstRates.cgst) /
+                          100)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-between">
             <div>
               <button
                 onClick={addProduct}
-                className="bg-green-500 text-white px-4 py-2 rounded mr-4"
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mr-4 transition-colors duration-200"
               >
                 Add Product
               </button>
             </div>
             <div>
               <button
-                onClick={generatePDF}
-                className="bg-blue-500 text-white px-4 py-2 rounded"
+                onClick={() => {
+                  if (validateForm()) {
+                    generatePDF();
+                  }
+                }}
+                disabled={!products.length || loading}
+                className={`px-4 py-2 rounded transition-colors duration-200 ${
+                  !products.length || loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-500 hover:bg-blue-600 text-white"
+                }`}
               >
-                Generate Invoice
+                {loading ? (
+                  <span className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Generating...
+                  </span>
+                ) : (
+                  "Generate Invoice"
+                )}
               </button>
             </div>
           </div>

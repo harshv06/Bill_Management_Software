@@ -179,153 +179,205 @@ const ClientDetails = () => {
     setCurrentPage(newPage);
   };
 
+  const DetailRow = ({ label, value }) => (
+    <div className="space-y-1">
+      <label className="block text-sm font-medium text-gray-600">{label}</label>
+      <p className="text-base font-semibold text-gray-900">{value || "N/A"}</p>
+    </div>
+  );
+
   if (!company) return null;
 
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
-      <div className="flex-1 overflow-auto p-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/clients")}
-              className="text-blue-500 hover:text-blue-700 flex items-center"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8 flex justify-between items-center">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate("/clients")}
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-              Back to Clients
-            </button>
-            <h1 className="text-2xl font-bold">Client Details</h1>
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                <span className="font-medium">Back to Clients</span>
+              </button>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">Client Details</h1>
           </div>
-          {/* <button
-            onClick={() => setIsAddPaymentModalOpen(true)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Create Invoice
-          </button> */}
-        </div>
 
-        {/* Company Information Card */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-6">Company Information</h2>
-            <div className="grid md:grid-cols-3 gap-x-8 gap-y-6">
-              {/* Basic Information */}
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Company Name
-                </label>
-                <p className="text-lg font-semibold">{company.company_name}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  GST Number
-                </label>
-                <p className="text-lg">{company.gst_number || "N/A"}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  PAN Number
-                </label>
-                <p className="text-lg">{company.pan_number || "N/A"}</p>
+          {/* Content Cards */}
+          <div className="space-y-6">
+            {/* Company Information Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
+                {/* Basic Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg
+                        className="w-5 h-5 mr-2 text-blue-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                      </svg>
+                      Basic Information
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow
+                        label="Company Name"
+                        value={company.company_name}
+                      />
+                      <DetailRow
+                        label="Client Type"
+                        value={company.client_type.replace("_", " ")}
+                      />
+                      <DetailRow label="Status" value={company.status} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg
+                        className="w-5 h-5 mr-2 text-green-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"
+                        />
+                      </svg>
+                      Tax Information
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow
+                        label="GST Number"
+                        value={company.gst_number}
+                      />
+                      <DetailRow
+                        label="PAN Number"
+                        value={company.pan_number}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg
+                        className="w-5 h-5 mr-2 text-purple-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Contact Information
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow label="Email" value={company.email} />
+                      <DetailRow label="Phone" value={company.phone} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg
+                        className="w-5 h-5 mr-2 text-yellow-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      Financial Information
+                    </h2>
+                    <div className="space-y-3">
+                      <DetailRow
+                        label="Total Revenue"
+                        value={`₹ ${total_revenue.toLocaleString()}`}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Contact Information */}
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Email Address
-                </label>
-                <p className="text-lg">{company.email}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Phone Number
-                </label>
-                <p className="text-lg">{company.phone}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Client Type
-                </label>
-                <span className="inline-flex px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 capitalize">
-                  {company.client_type.replace("_", " ")}
-                </span>
-              </div>
-
-              {/* Revenue */}
-              <div className="col-span-full">
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Total Revenue
-                </label>
-                <p className="text-2xl font-bold text-green-600">
-                  ₹{total_revenue.toLocaleString()}
+              {/* Address Section */}
+              <div className="border-t border-gray-200 mt-6 pt-6 px-6 pb-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2 text-red-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  Address Information
+                </h2>
+                <p className="text-gray-700">
+                  {company.address || "No address provided"}
                 </p>
               </div>
             </div>
 
-            {/* Full Address */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Full Address
-              </label>
-              <p className="text-lg">
-                {company.address || "No address provided"}
-              </p>
-            </div>
+            {/* Invoice List Section */}
+            <InvoiceList companyId={company.company_id} />
           </div>
         </div>
-
-        <InvoiceList companyId={company.company_id} />
-
-        {/* Payment History Card */}
-        {/* <PaymentHistorySection
-          payments={paymentHistory}
-          loading={loading}
-          error={error}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onPageChange={setCurrentPage}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-          onViewReceipt={handleViewReceipt}
-        /> */}
-
-        {/* Add Payment Modal */}
-        {/* {isAddPaymentModalOpen && (
-          <AddCompanyPaymentModal
-            isOpen={isAddPaymentModalOpen}
-            onClose={() => setIsAddPaymentModalOpen(false)}
-            companyId={company.company_id}
-            onPaymentAdded={fetchPaymentHistory}
-          />
-        )} */}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 // components/AssignCompanyModal.js
 import React, { useState, useEffect } from "react";
+import Config from '../../../utils/GlobalConfig'
 
 const AssignCarToCompanyModal = ({
   isOpen,
@@ -23,8 +24,9 @@ const AssignCarToCompanyModal = ({
   const fetchAvailableCompanies = async () => {
     try {
       setLoading(true);
+      console.log(carId);
       const response = await fetch(
-        `${API_BASE_URL}/cars/${carId}/available-companies`
+        `${Config.API_BASE_URL}/cars/${carId}/available-companies`
       );
 
       if (!response.ok) {
@@ -32,6 +34,7 @@ const AssignCarToCompanyModal = ({
       }
 
       const data = await response.json();
+      console.log(data);
       setCompanies(data.companies || []);
     } catch (err) {
       setError(err.message);
@@ -52,7 +55,7 @@ const AssignCarToCompanyModal = ({
     try {
       setLoading(true);
       const response = await fetch(
-        `${API_BASE_URL}/cars/${carId}/assign-companies`,
+        `${Config.API_BASE_URL}/cars/${carId}/assign-companies`,
         {
           method: "POST",
           headers: {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import jsPDF from "jspdf";
+import Config from "../../../utils/GlobalConfig";
 import "jspdf-autotable";
 
 const CarAllocationModal = ({ isOpen, onClose, car }) => {
@@ -31,7 +32,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
       const { startDate, endDate } = formData;
 
       const response = await fetch(
-        `http://192.168.0.106:5000/api/cars/${car.car_id}/advance-payments?startDate=${startDate}&endDate=${endDate}`
+        `${Config.API_BASE_URL}/cars/${car.car_id}/advance-payments?startDate=${startDate}&endDate=${endDate}`
       );
 
       const data = await response.json();
@@ -133,117 +134,153 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
   // PDF Generation
   const generatePDF = () => {
     if (!calculationResult) return;
-
+  
     const doc = new jsPDF();
-
-    // Title
-    doc.setFontSize(18);
-    doc.text("Salary Allocation Report", 14, 22);
-
-    // Period Details
-    doc.setFontSize(12);
-    doc.text(
-      `Period: ${calculationResult.periodDetails.startDate} to ${calculationResult.periodDetails.endDate}`,
-      14,
-      32
-    );
-
-    // Car Details Table
+    const pageWidth = doc.internal.pageSize.width;
+    const margin = 15;
+    const tableWidth = pageWidth - (2 * margin);
+  
+    // Common table styles
+    const commonStyles = {
+      margin,
+      tableWidth,
+      styles: {
+        fontSize: 10,
+        cellPadding: 6,
+        halign: 'left',
+      },
+      headStyles: {
+        fillColor: [52, 73, 94],
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      bodyStyles: {
+        lineWidth: 0.5,
+        lineColor: [80, 80, 80],
+      },
+      theme: 'grid',
+    };
+  
+    // Title and Period
     doc.autoTable({
-      startY: 40,
-      head: [["Detail", "Value"]],
+      startY: 10,
+      head: [["SALARY ALLOCATION REPORT"]],
+      body: [[`Period: ${calculationResult.periodDetails.startDate} to ${calculationResult.periodDetails.endDate}`]],
+      ...commonStyles,
+      headStyles: {
+        ...commonStyles.headStyles,
+        fontSize: 14,
+      },
+    });
+  
+    // Vehicle Details
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["VEHICLE DETAILS"]],
       body: [
-        ["Car ID", calculationResult.carDetails.carId],
-        ["Car Name", calculationResult.carDetails.carName],
-        ["Car Model", calculationResult.carDetails.carModel],
+        [`Car ID : ${calculationResult.carDetails.carId}`],
+        [`Car Name : ${calculationResult.carDetails.carName}`],
+        [`Car Model : ${calculationResult.carDetails.carModel}`],
       ],
-      theme: "plain",
+      ...commonStyles,
     });
-
-    // Advance Payments Table
+  
+    // Advance Payments
+    if (advancePaymentList.length > 0) {
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [["ADVANCE PAYMENTS"]],
+        body: [
+          ["Date", "Amount", "Notes"],
+          ...advancePaymentList.map((payment) => [
+            `${payment.payment_date.toLocaleDateString()}`,
+            ` ${payment.amount.toFixed(2)}`,
+            `${payment.notes || "N/A"}`,
+          ]),
+          [`Total Advance Payments :  ${calculateTotalAdvancePayments().toFixed(2)}`],
+        ],
+        ...commonStyles,
+      });
+    }
+  
+    // Salary Calculation
     doc.autoTable({
-      head: [["Payment Date", "Amount", "Notes"]],
-      body: advancePaymentList.map((payment) => [
-        payment.payment_date.toLocaleDateString(),
-        `${payment.amount.toFixed(2)}`,
-        payment.notes || "N/A",
-      ]),
-      theme: "striped",
-      headStyles: { fillColor: [22, 160, 133] },
-    });
-
-    // Salary Details Table
-    doc.autoTable({
-      head: [["Salary Detail", "Value"]],
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["SALARY CALCULATION"]],
       body: [
-        [
-          "Daily Rate",
-          `${calculationResult.salaryDetails.dailyRate.toFixed(2)}`,
-        ],
-        [
-          "Working Days Rate",
-          `${calculationResult.salaryDetails.workingDaysRate.toFixed(2)}`,
-        ],
-        [
-          "Total Working Days",
-          calculationResult.salaryDetails.totalWorkingDays,
-        ],
-        [
-          "Effective Working Days",
-          calculationResult.salaryDetails.effectiveWorkingDays,
-        ],
-        [
-          "Gross Salary",
-          `${calculationResult.salaryDetails.grossSalary.toFixed(2)}`,
-        ],
+        [`Daily Rate :  ${calculationResult.salaryDetails.dailyRate.toFixed(2)}`],
+        [`Working Days Rate :  ${calculationResult.salaryDetails.workingDaysRate.toFixed(2)}`],
+        [`Total Working Days : ${calculationResult.salaryDetails.totalWorkingDays}`],
+        [`Effective Working Days : ${calculationResult.salaryDetails.effectiveWorkingDays}`],
+        [`Gross Salary :  ${calculationResult.salaryDetails.grossSalary.toFixed(2)}`],
       ],
-      theme: "plain",
+      ...commonStyles,
     });
-
-    // Deduction Details Table
+  
+    // Deductions
     doc.autoTable({
-      head: [["Deduction Detail", "Value"]],
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["DEDUCTIONS"]],
       body: [
-        [
-          "Tax Deduction",
-          `${calculationResult.deductionDetails.taxDeduction.toFixed(2)}`,
-        ],
-        [
-          "Holiday Deduction",
-          `${calculationResult.deductionDetails.holidayDeduction.toFixed(2)}`,
-        ],
-        [
-          "Penalty Deduction",
-          `${calculationResult.deductionDetails.penaltyDeduction.toFixed(2)}`,
-        ],
-        [
-          "Advance Payment Total",
-          `${calculationResult.deductionDetails.advancePaymentTotal.toFixed(
-            2
-          )}`,
-        ],
-        [
-          "Total Deductions",
-          `${calculationResult.deductionDetails.totalDeductions.toFixed(2)}`,
-        ],
+        [`Tax Deduction :  ${calculationResult.deductionDetails.taxDeduction.toFixed(2)}`],
+        [`Holiday Deduction :  ${calculationResult.deductionDetails.holidayDeduction.toFixed(2)}`],
+        [`Penalty Deduction :  ${calculationResult.deductionDetails.penaltyDeduction.toFixed(2)}`],
+        [`Advance Payment Total :  ${calculationResult.deductionDetails.advancePaymentTotal.toFixed(2)}`],
+        [`Total Deductions :  ${calculationResult.deductionDetails.totalDeductions.toFixed(2)}`],
       ],
-      theme: "plain",
+      ...commonStyles,
     });
-
-    // Final Details Table
+  
+    // Final Settlement
     doc.autoTable({
-      head: [["Final Detail", "Value"]],
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["FINAL SETTLEMENT"]],
       body: [
-        [
-          "Net Salary",
-          `${calculationResult.finalDetails.netSalary.toFixed(2)}`,
-        ],
+        [`Gross Salary :  ${calculationResult.salaryDetails.grossSalary.toFixed(2)}`],
+        [`Total Deductions :  ${calculationResult.deductionDetails.totalDeductions.toFixed(2)}`],
+        [`Net Salary :  ${calculationResult.finalDetails.netSalary.toFixed(2)}`],
       ],
-      theme: "plain",
+      ...commonStyles,
+      bodyStyles: {
+        ...commonStyles.bodyStyles,
+        fontSize: 11,
+        fontStyle: 'bold',
+      },
     });
-
+  
+    // Signature Section
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 20,
+      body: [
+        ['_____________________                                           _____________________'],
+        ['Authorized Signatory                                           Vehicle Owner'],
+        [`Date: ${new Date().toLocaleDateString('en-GB')}`],
+      ],
+      ...commonStyles,
+      theme: 'plain',
+      styles: {
+        ...commonStyles.styles,
+        halign: 'center',
+      },
+    });
+  
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(128);
+      doc.text(
+        `Page ${i} of ${pageCount} | Generated on: ${new Date().toLocaleString()}`,
+        pageWidth / 2,
+        doc.internal.pageSize.height - 10,
+        { align: "center" }
+      );
+    }
+  
     // Save the PDF
-    doc.save(`salary_allocation_${car.car_id}.pdf`);
+    doc.save(`Salary_Allocation_${car.car_id}_${calculationResult.periodDetails.startDate}.pdf`);
   };
 
   return (
@@ -418,7 +455,7 @@ const CarAllocationModal = ({ isOpen, onClose, car }) => {
                 </table>
                 <div className="mt-2 text-right">
                   <strong>
-                    Total Advance Payments: 
+                    Total Advance Payments:
                     {calculateTotalAdvancePayments().toFixed(2)}
                   </strong>
                 </div>
