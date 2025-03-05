@@ -42,7 +42,7 @@ const Clients = () => {
       if (!response.ok) {
         throw new Error("Failed to add company");
       }
-
+      console.log(response)
       dispatch(fetchCompanyData());
       setIsAddModalOpen(false);
     } catch (error) {
