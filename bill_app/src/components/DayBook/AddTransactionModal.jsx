@@ -1,8 +1,9 @@
 // components/DayBook/AddTransactionModal.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
+import axios from "axios";
+import Config from "../../utils/GlobalConfig";
 const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
   const [formData, setFormData] = useState(
     initialData || {
@@ -62,14 +63,18 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
   const partyTypes = ["Customer", "Vendor", "Employee", "Other"];
   const [errors, setErrors] = useState({});
 
-  const categories = [
-    "salary",
-    "rent",
-    "utilities",
-    "supplies",
-    "maintenance",
-    "other",
-  ];
+  //   const categories = [
+  //     "salary",
+  //     "rent",
+  //     "utilities",
+  //     "supplies",
+  //     "maintenance",
+  //     "other",
+  //   ];
+
+  const [categories, setCategories] = useState([]);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
 
   const paymentMethods = [
     "cash",
@@ -79,6 +84,24 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
     "card",
     "other",
   ];
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(
+        `${Config.API_BASE_URL}/daybook/FetchCategories`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      setCategories(response.data.data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -96,9 +119,26 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Clicked:",errors)
+    console.log("Clicked:", errors);
     if (validateForm()) {
-        onSubmit(formData);
+      onSubmit(formData);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    try {
+      await axios.post(
+        `${Config.API_BASE_URL}/daybook/addCategory`,
+        { name: newCategory },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      setNewCategory("");
+      setShowAddCategory(false);
+      fetchCategories();
+    } catch (error) {
+      console.error("Error adding category:", error);
     }
   };
 
@@ -378,6 +418,91 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
             {/* Additional Details Section */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-4">Additional Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value })
+                      }
+                      className={`w-full border rounded-lg p-2 ${
+                        errors.category ? "border-red-500" : ""
+                      }`}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((category) => (
+                        <option
+                          key={category.category_id}
+                          value={category.name}
+                        >
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategory(true)}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={formData.payment_method}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        payment_method: e.target.value,
+                      })
+                    }
+                    className={`w-full border rounded-lg p-2 ${
+                      errors.payment_method ? "border-red-500" : ""
+                    }`}
+                  >
+                    <option value="">Select Payment Method</option>
+                    {paymentMethods.map((method) => (
+                      <option key={method} value={method}>
+                        {method.charAt(0).toUpperCase() +
+                          method.slice(1).replace("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.payment_method && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.payment_method}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reference Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.reference_number}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        reference_number: e.target.value,
+                      })
+                    }
+                    className="w-full border rounded-lg p-2"
+                    placeholder="Enter reference number"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Narration
@@ -389,11 +514,27 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
                   }
                   className="w-full border rounded-lg p-2"
                   rows="3"
+                  placeholder="Enter narration"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  className="w-full border rounded-lg p-2"
+                  rows="2"
+                  placeholder="Enter additional notes"
                 />
               </div>
             </div>
 
-            <div className="border-t px-6 py-4 flex justify-end gap-2 bg-white">
+            <div className="border-t px-6 py-4 flex justify-end gap-2 bg-white mt-6">
               <button
                 type="button"
                 onClick={onClose}
@@ -402,7 +543,6 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
                 Cancel
               </button>
               <button
-                // onClick={handleSubmit}
                 type="submit"
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               >
@@ -413,6 +553,37 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
         </div>
 
         {/* Footer */}
+
+        {showAddCategory && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96">
+              <h3 className="text-lg font-semibold mb-4">Add New Category</h3>
+              <input
+                type="text"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full border rounded-lg p-2 mb-4"
+                placeholder="Enter category name"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCategory(false)}
+                  className="px-4 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
