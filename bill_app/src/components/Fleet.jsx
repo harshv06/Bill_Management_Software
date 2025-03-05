@@ -15,43 +15,52 @@ const Fleet = () => {
   const navigate = useNavigate();
   const { data, loading, error } = useSelector((state) => state.FleetData);
 
+  // State declarations
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editModalData, setEditModalData] = useState({
     isOpen: false,
     carData: null,
   });
-
-  // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
-  const API_BASE_URL = "http://192.168.0.106:5000/api/cars";
+  // Constants
+  const filterOptions = [
+    { value: "ALL", label: "All Cars" },
+    { value: "ACTIVE", label: "Active Cars" },
+    { value: "INACTIVE", label: "Inactive Cars" },
+    { value: "IN_PROCESS", label: "In Process Cars" },
+  ];
 
   // Fetch fleet data on component mount
   useEffect(() => {
     dispatch(fetchFleetData());
   }, [dispatch]);
 
-  // Memoized filtered cars to improve performance
+  // Memoized filtered cars
   const filteredCars = useMemo(() => {
     if (!data?.cars) return [];
 
     return data.cars.filter((car) => {
       const searchString = searchTerm.toLowerCase();
-      return (
+      const matchesSearch =
         car.car_id.toLowerCase().includes(searchString) ||
         car.car_name.toLowerCase().includes(searchString) ||
-        car.car_model.toLowerCase().includes(searchString)
-      );
-    });
-  }, [data, searchTerm]);
+        car.car_model.toLowerCase().includes(searchString);
 
-  // Navigation and Action Handlers
+      const matchesStatus =
+        statusFilter === "ALL" || car.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [data, searchTerm, statusFilter]);
+
+  // Handlers
   const navigateToCarDetails = (car) => {
     navigate("/fleet/details", { state: { car } });
   };
 
   const handleDelete = async (carId) => {
-    // Check delete permission
     if (!user?.permissions?.includes(PERMISSIONS.CARS.DELETE)) {
       alert("You do not have permission to delete cars.");
       return;
@@ -59,12 +68,15 @@ const Fleet = () => {
 
     if (window.confirm("Are you sure you want to delete this car?")) {
       try {
-        const response = await fetch(`${config.API_BASE_URL}/cars/delete/${carId}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const response = await fetch(
+          `${config.API_BASE_URL}/cars/delete/${carId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -81,21 +93,23 @@ const Fleet = () => {
   };
 
   const handleEdit = async (carData) => {
-    // Check edit permission
     if (!user?.permissions?.includes(PERMISSIONS.CARS.UPDATE)) {
       alert("You do not have permission to edit cars.");
       return;
     }
 
     try {
-      const response = await fetch(`${config.API_BASE_URL}/cars/update/${carData.car_id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(carData),
-      });
+      const response = await fetch(
+        `${config.API_BASE_URL}/cars/update/${carData.car_id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(carData),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -112,7 +126,6 @@ const Fleet = () => {
   };
 
   const handleAdd = async (carData) => {
-    // Check create permission
     if (!user?.permissions?.includes(PERMISSIONS.CARS.CREATE)) {
       alert("You do not have permission to add cars.");
       return;
@@ -157,12 +170,12 @@ const Fleet = () => {
     return null;
   };
 
-  const renderActionButtons = (carex) => {
+  const renderActionButtons = (car) => {
     return (
       <div className="flex gap-2">
         {user?.permissions?.includes(PERMISSIONS.CARS.DELETE) && (
           <button
-            onClick={() => handleDelete(carex.car_id)}
+            onClick={() => handleDelete(car.car_id)}
             className="text-red-500 hover:text-red-700 transition-colors"
           >
             Delete
@@ -173,7 +186,7 @@ const Fleet = () => {
             onClick={() =>
               setEditModalData({
                 isOpen: true,
-                carData: carex,
+                carData: car,
               })
             }
             className="text-blue-500 hover:text-blue-700 transition-colors"
@@ -189,12 +202,30 @@ const Fleet = () => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-8">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Fleet Management</h1>
           {renderAddButton()}
         </div>
 
-        {/* Search Bar */}
+        {/* Filters */}
+        <div className="mb-4 flex gap-4">
+          {filterOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setStatusFilter(option.value)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                statusFilter === option.value
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
         <div className="mb-4">
           <input
             type="text"
@@ -205,7 +236,7 @@ const Fleet = () => {
           />
         </div>
 
-        {/* List Container */}
+        {/* Cars List */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           {loading ? (
             <div className="p-4 text-center text-gray-500">
@@ -217,40 +248,52 @@ const Fleet = () => {
           ) : filteredCars.length === 0 ? (
             <div className="p-4 text-center text-gray-500">No cars found</div>
           ) : (
-            <div>
-              {/* Table Headers */}
-              <div className="grid grid-cols-5 gap-4 p-4 font-bold bg-gray-50 border-b">
+            <>
+              {/* Table Header */}
+              <div className="grid grid-cols-6 gap-4 p-4 font-bold bg-gray-50 border-b">
                 <div>Car ID</div>
                 <div>Name</div>
                 <div>Model</div>
-                <div>Induction Date</div>
+                <div>Status</div>
+                <div>Payment Type</div>
                 <div>Actions</div>
               </div>
 
-              {/* Car List */}
+              {/* Table Body */}
               <ul>
-                {filteredCars.map((carex) => (
+                {filteredCars.map((car) => (
                   <li
-                    key={carex.car_id}
-                    className="grid grid-cols-5 gap-4 p-4 hover:bg-gray-50 items-center border-b last:border-b-0 transition-colors"
-                    onClick={() => navigateToCarDetails(carex)}
+                    key={car.car_id}
+                    className="grid grid-cols-6 gap-4 p-4 hover:bg-gray-50 items-center border-b"
+                    onClick={() => navigateToCarDetails(car)}
                   >
-                    <div>{carex.car_id}</div>
-                    <div>{carex.car_name}</div>
-                    <div>{carex.car_model}</div>
+                    <div>{car.car_id}</div>
+                    <div>{car.car_name}</div>
+                    <div>{car.car_model}</div>
                     <div>
-                      {new Date(carex.induction_date).toLocaleDateString()}
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          car.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800"
+                            : car.status === "INACTIVE"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {car.status}
+                      </span>
                     </div>
+                    <div>{car.payment_type}</div>
                     <div
-                      className="flex gap-2"
                       onClick={(e) => e.stopPropagation()}
+                      className="flex gap-2"
                     >
-                      {renderActionButtons(carex)}
+                      {renderActionButtons(car)}
                     </div>
                   </li>
                 ))}
               </ul>
-            </div>
+            </>
           )}
         </div>
 
