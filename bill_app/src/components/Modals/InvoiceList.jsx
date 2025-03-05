@@ -287,6 +287,7 @@ const InvoiceList = ({ companyId }) => {
                     <td className="px-4 py-3 flex space-x-2">
                       <select
                         value={invoice.status}
+                        disabled={invoice.status === 'paid'} // Disable if already paid
                         onChange={(e) =>
                           handleStatusUpdate(invoice.invoice_id, e.target.value)
                         }
@@ -299,6 +300,7 @@ const InvoiceList = ({ companyId }) => {
                       </select>
                       <button
                         onClick={() => handleDeleteInvoice(invoice.invoice_id)}
+                        disabled={invoice.status === 'paid'} // Disable if already paid
                         className="text-red-500 hover:text-red-700"
                         title="Delete Invoice"
                       >

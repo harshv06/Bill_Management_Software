@@ -25,6 +25,7 @@ export const fetchFleetData = createAsyncThunk(
         sortBy,
         sortOrder,
       }).toString();
+      const token = localStorage.getItem("token");
 
       const response = await fetch(
         `${Config.API_BASE_URL}/cars?${queryParams}`,
@@ -33,6 +34,7 @@ export const fetchFleetData = createAsyncThunk(
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
+            Authorization: `Bearer ${token}`,
           },
         }
       );

@@ -29,6 +29,7 @@ const Clients = () => {
   }, [currentPage, dispatch]);
 
   const handleAdd = async (companyData) => {
+    console.log("Company Data:",companyData);
     try {
       const response = await fetch(`${Config.API_BASE_URL}/addCompany`, {
         method: "POST",
@@ -79,7 +80,7 @@ const Clients = () => {
     if (window.confirm("Are you sure you want to delete this company?")) {
       try {
         const response = await fetch(
-          `http://192.168.0.106:5000/api/deleteCompany/${companyId}`,
+          `${Config.API_BASE_URL}/deleteCompany/${companyId}`,
           {
             method: "DELETE",
           }

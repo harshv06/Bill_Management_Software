@@ -59,7 +59,7 @@ const Fleet = () => {
 
     if (window.confirm("Are you sure you want to delete this car?")) {
       try {
-        const response = await fetch(`${API_BASE_URL}/delete/${carId}`, {
+        const response = await fetch(`${config.API_BASE_URL}/cars/delete/${carId}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -88,7 +88,7 @@ const Fleet = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/update/${carData.car_id}`, {
+      const response = await fetch(`${config.API_BASE_URL}/cars/update/${carData.car_id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -223,7 +223,7 @@ const Fleet = () => {
                 <div>Car ID</div>
                 <div>Name</div>
                 <div>Model</div>
-                <div>Service Date</div>
+                <div>Induction Date</div>
                 <div>Actions</div>
               </div>
 
