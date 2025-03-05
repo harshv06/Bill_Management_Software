@@ -2,8 +2,12 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useAuth } from "../context/authContext";
+import config from "../utils/GlobalConfig";
+
 
 const Signup = () => {
+  const {Register}= useAuth()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,32 +27,42 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    setError(null);
+  
+    // Basic validation
+    if (!formData.name || !formData.email || !formData.password) {
+      setError("All fields are required");
+      toast.error("All fields are required");
       return;
     }
-
+  
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
+    }
+  
     try {
-      const response = await axios.post("/api/auth/signup", {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
-
-      // Show success toast
-      toast.success("Account created successfully");
-
-      // Redirect to login
-      navigate("/login");
+      const response = await Register(
+        formData.name,
+        formData.email,
+        formData.password
+      );
+  
+      if (response) {
+        toast.success("Account created successfully!");
+        navigate("/login");
+      }
     } catch (error) {
-      // Handle signup error
-      const errorMessage = error.response?.data?.message || "Signup failed";
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.message || 
+        "Registration failed";
       setError(errorMessage);
       toast.error(errorMessage);
     }
   };
+  
   return (
     <div className="grid grid-cols-12 w-screen h-screen ">
       <div className="col-span-4  w-full h-full  p-20 text-gray-700">

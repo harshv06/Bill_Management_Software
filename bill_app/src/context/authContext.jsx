@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 import Config from "../utils/GlobalConfig";
 import { ROLE_PERMISSIONS, PERMISSIONS } from "../config/permissions";
+import config from "../utils/GlobalConfig";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -42,6 +43,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const Register = async (name, email, password) => {
+    try {
+      console.log({username:name,email,password})
+      const response = await axios.post(`${config.API_BASE_URL}/signup`, {
+        username:name,
+        email,
+        password,
+      });
+      
+      if (response.data) {
+        console.log("Registration successful:", response.data);
+        return response.data;
+      }
+    } catch (error) {
+      console.error("Registration error:", error.response?.data || error.message);
+      throw error; // Rethrow the error to handle it in the component
+    }
+  };
+
   const validateToken = async (token) => {
     try {
       const response = await axios.post(
@@ -78,6 +98,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         login,
         logout,
+        Register,
       }}
     >
       {children}
