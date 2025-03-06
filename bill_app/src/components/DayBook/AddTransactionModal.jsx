@@ -4,6 +4,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
 import Config from "../../utils/GlobalConfig";
+import AddCompanyModal from "../Modals/AddCompanyModal";
 const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
   const [formData, setFormData] = useState(
     initialData || {
@@ -26,6 +27,7 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
       narration: "",
       party_name: "",
       party_type: "",
+      company_id: "", // Add this to store the selected company's ID
     }
   );
 
@@ -75,6 +77,8 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
   const [categories, setCategories] = useState([]);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
+  const [companies, setCompanies] = useState([]);
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
 
   const paymentMethods = [
     "cash",
@@ -99,8 +103,24 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const response = await axios.get(
+        `${Config.API_BASE_URL}/getAllCompanies`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      console.log(response.data.companies);
+      setCompanies(response.data.companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
+    fetchCompanies();
   }, []);
 
   const validateForm = () => {
@@ -139,6 +159,37 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
       fetchCategories();
     } catch (error) {
       console.error("Error adding category:", error);
+    }
+  };
+
+  const handleAddCompany = async (companyData) => {
+    try {
+      const response = await axios.post(
+        `${Config.API_BASE_URL}/addCompany`,
+        companyData,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
+      setShowAddCompanyModal(false);
+      fetchCompanies(); // Refresh the companies list
+    } catch (error) {
+      console.error("Error adding company:", error);
+    }
+  };
+
+  const handlePartySelect = (selectedValue) => {
+    const selectedCompany = companies.find(
+      (company) => company.company_id.toString() === selectedValue
+    );
+
+    if (selectedCompany) {
+      setFormData({
+        ...formData,
+        company_id: selectedValue,
+        party_name: selectedCompany.company_name, // This will be clean without the suffix
+      });
     }
   };
 
@@ -403,14 +454,36 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Party Name
                   </label>
-                  <input
-                    type="text"
-                    value={formData.party_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, party_name: e.target.value })
-                    }
-                    className="w-full border rounded-lg p-2"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.company_id}
+                      onChange={(e) => {
+                        console.log(e.target);
+                        handlePartySelect(e.target.value);
+                      }}
+                      className="w-full border rounded-lg p-2"
+                    >
+                      <option value="">Select Party</option>
+                      {companies.map((company) => (
+                        <option
+                          key={company.company_id}
+                          value={company.company_id}
+                        >
+                          {company.company_name}
+                          {company.client_type === "sub_vendor"
+                            ? " (Sub Vendor)"
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCompanyModal(true)}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -583,6 +656,14 @@ const AddTransactionModal = ({ onClose, onSubmit, initialData = null }) => {
               </div>
             </div>
           </div>
+        )}
+
+        {showAddCompanyModal && (
+          <AddCompanyModal
+            isOpen={showAddCompanyModal}
+            onClose={() => setShowAddCompanyModal(false)}
+            onAdd={handleAddCompany}
+          />
         )}
       </div>
     </div>
