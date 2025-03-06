@@ -8,13 +8,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { PERMISSIONS } from "../config/permissions";
 import config from "../utils/GlobalConfig";
+import SalaryCalculationModal from "./Modals/SalaryModal/SalaryCalculationModal";
+import SalaryHistoryList from "./CustomComponents/SalaryHistoryList";
 
 const Fleet = () => {
   const dispatch = useDispatch();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data, loading, error } = useSelector((state) => state.FleetData);
-
+  const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [showSalaryHistory, setShowSalaryHistory] = useState(false);
   // State declarations
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editModalData, setEditModalData] = useState({
@@ -170,6 +173,15 @@ const Fleet = () => {
     return null;
   };
 
+  const renderSalaryButton = () => (
+    <button
+      onClick={() => setShowSalaryModal(true)}
+      className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+    >
+      Calculate Salary
+    </button>
+  );
+
   const renderActionButtons = (car) => {
     return (
       <div className="flex gap-2">
@@ -202,10 +214,18 @@ const Fleet = () => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-8">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Fleet Management</h1>
-          {renderAddButton()}
+          <div className="flex gap-2">
+            {renderAddButton()}
+            {renderSalaryButton()}
+            <button
+              onClick={() => setShowSalaryHistory(true)}
+              className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+            >
+              Salary History
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -328,6 +348,21 @@ const Fleet = () => {
           onClose={() => setEditModalData({ isOpen: false, carData: null })}
           onEdit={handleEdit}
           carData={editModalData.carData}
+        />
+
+        <SalaryCalculationModal
+          isOpen={showSalaryModal}
+          onClose={() => setShowSalaryModal(false)}
+          cars={data?.cars || []}
+          onGenerateReport={(reportData) => {
+            // Handle report generation
+            console.log("Report Data:", reportData);
+          }}
+        />
+
+        <SalaryHistoryList
+          isOpen={showSalaryHistory}
+          onClose={() => setShowSalaryHistory(false)}
         />
       </div>
     </div>

@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchFleetData } from '../../store/FleetDataSlice';
-import CarAllocationModal from './Modals/ReportModals/PaymentInformationModal';
-import Config from '../utils/GlobalConfig';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchFleetData } from "../../store/FleetDataSlice";
+import CarAllocationModal from "./Modals/ReportModals/PaymentInformationModal";
+import Config from "../utils/GlobalConfig";
+import ReportsSubmenu from "./CustomComponents/ReportSubMenu";
 // import CarAllocationModal from '../components/Modals/CarAllocationModal';
 
 const Reports = () => {
   const [cars, setCars] = useState([]);
   // const [loading, setLoading] = useState(true);
   // const [error, setError] = useState(null);
+  const [showReportsSubmenu, setShowReportsSubmenu] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const navigate = useNavigate();
-  const dispatch=useDispatch();
+  const dispatch = useDispatch();
   const { data, loading, error } = useSelector((state) => state.FleetData);
 
   // const API_BASE_URL = "http://192.168.0.106:5000/api";
@@ -22,7 +24,6 @@ const Reports = () => {
   useEffect(() => {
     dispatch(fetchFleetData());
   }, []);
-
 
   const handleCarSelect = (car) => {
     setSelectedCar(car);
@@ -41,8 +42,8 @@ const Reports = () => {
     return (
       <div className="text-red-500 text-center mt-10">
         Error: {error}
-        <button 
-          onClick={fetchCars} 
+        <button
+          onClick={fetchCars}
           className="ml-4 bg-blue-500 text-white px-4 py-2 rounded"
         >
           Retry
@@ -54,13 +55,24 @@ const Reports = () => {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-2xl font-bold mb-6">Fleet Management</h1>
-        
+      <div className="flex-1 p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Fleet Management</h1>
+          <div className="flex gap-2">
+            {/* {renderAddButton()} */}
+            <button
+              onClick={() => setShowReportsSubmenu(true)}
+              className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Reports
+            </button>
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.cars.map((car) => (
-            <div 
-              key={car.car_id} 
+            <div
+              key={car.car_id}
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-xl transition-shadow"
               onClick={() => handleCarSelect(car)}
             >
@@ -95,6 +107,12 @@ const Reports = () => {
             onClose={() => setIsAllocationModalOpen(false)}
             car={selectedCar}
           />
+        )}
+
+        {showReportsSubmenu && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <ReportsSubmenu onClose={() => setShowReportsSubmenu(false)} />
+          </div>
         )}
       </div>
     </div>
