@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import logoImage from "../../../assets/LetterHead.png"; // Import your logo
-import Sidebar from "../../Sidebar";
+import logoImage from "../../../assets/letterhead Matoshree.png"; // Import your logo
 import Config from "../../../utils/GlobalConfig";
 import axios from "axios";
 import { toast } from "react-toastify";
+import AddCompanyModal from "../AddCompanyModal";
+import CompanySearch from "../Company/CompanySearch";
 
 // const Invoices = () => {
 
@@ -16,6 +17,7 @@ const GenerateInvoiceModal = ({
 }) => {
   const [companies, setCompanies] = useState([]);
   const [isOtherCompany, setIsOtherCompany] = useState(false);
+  const [isAddCompanyModalOpen, setIsAddCompanyModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [products, setProducts] = useState([
@@ -58,9 +60,10 @@ const GenerateInvoiceModal = ({
     const fetchCompanies = async () => {
       try {
         const response = await axios.get(
-          `${Config.API_BASE_URL}/getAllCompanies`
+          `${Config.API_BASE_URL}/getAllCompaniesWithoutPagination`
         );
-        setCompanies(response.data.companies);
+        console.log(response);
+        setCompanies(response.data.data);
       } catch (error) {
         console.error("Error fetching companies:", error);
         toast.error("Failed to fetch companies");
@@ -68,7 +71,54 @@ const GenerateInvoiceModal = ({
     };
 
     fetchCompanies();
-  }, []);
+  }, [isAddCompanyModalOpen]); // Refetch companies when modal closes
+
+  const handleAddCompany = async (companyData) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${Config.API_BASE_URL}/addCompany`,
+        companyData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status === "success") {
+        toast.success("Company added successfully");
+
+        // Close the add company modal
+        setIsAddCompanyModalOpen(false);
+
+        // Immediately update the companies list
+        setCompanies((prevCompanies) => [...prevCompanies, response.data.data]);
+
+        // Automatically select the newly added company
+        const newCompany = response.data.data;
+        setInvoiceDetails((prev) => ({
+          ...prev,
+          customerDetails: {
+            company_id: newCompany.company_id,
+            name: newCompany.company_name,
+            address: newCompany.address,
+            gst: newCompany.gst_number,
+            stateCode: "27",
+          },
+        }));
+
+        // Reset other company state
+        setIsOtherCompany(false);
+      } else {
+        toast.error(response.data.message || "Failed to add company");
+      }
+    } catch (error) {
+      console.error("Error adding company:", error);
+      toast.error("Failed to add company");
+    }
+  };
 
   const saveInvoiceToDB = async (products, invoiceDetails) => {
     try {
@@ -113,6 +163,8 @@ const GenerateInvoiceModal = ({
         items: products,
       };
 
+      console.log(invoiceData);
+
       const response = await axios.post(
         `${Config.API_BASE_URL}/invoices`,
         invoiceData,
@@ -123,6 +175,43 @@ const GenerateInvoiceModal = ({
           },
         }
       );
+
+      const DayBookData = {
+        account_head: "Income",
+        amount: response.data.data.invoice.grand_total,
+        bank_account_id: null,
+        bank_name: null,
+        bank_account_number: null,
+        bank_ifsc_code: null,
+        car_id: null,
+        category: "PAYMENTS",
+        company_id: response.data.data.invoice.company_id,
+        description: `Invoice created for ${response.data.data.invoice.customer_name}`,
+        gst_applicable:
+          response.data.data.invoice.sgst_amount > 0 ? true : false,
+        party_name: response.data.data.invoice.customer_name,
+        party_type: "Customer",
+        payment_method: "cash",
+        reference_number: response.data.data.invoice.invoice_number,
+        sub_group: "INVOICE",
+        transaction_date: new Date(),
+        transaction_type: "CREDIT",
+        voucher_type: "Sales",
+      };
+
+      console.log("Invoice created:", DayBookData);
+
+      const daybookResponse = await axios.post(
+        `${Config.API_BASE_URL}/daybook/transactions`,
+        DayBookData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log(daybookResponse);
 
       if (onInvoiceCreated) {
         onInvoiceCreated();
@@ -159,42 +248,6 @@ const GenerateInvoiceModal = ({
     ]);
   };
 
-  const handleCompanyChange = (e) => {
-    const selectedValue = e.target.value;
-
-    if (selectedValue === "other") {
-      setIsOtherCompany(true);
-      setInvoiceDetails((prev) => ({
-        ...prev,
-        customerDetails: {
-          company_id: null,
-          name: "",
-          address: "",
-          gst: "",
-          stateCode: "27",
-        },
-      }));
-    } else {
-      setIsOtherCompany(false);
-      const selectedCompany = companies.find(
-        (company) => company.company_id === parseInt(selectedValue)
-      );
-
-      if (selectedCompany) {
-        setInvoiceDetails((prev) => ({
-          ...prev,
-          customerDetails: {
-            company_id: selectedCompany.company_id,
-            name: selectedCompany.company_name,
-            address: selectedCompany.address,
-            gst: selectedCompany.gst_number,
-            stateCode: "27",
-          },
-        }));
-      }
-    }
-  };
-
   const deleteProduct = (indexToRemove) => {
     // Prevent deletion if it's the only product
     if (products.length > 1) {
@@ -213,6 +266,72 @@ const GenerateInvoiceModal = ({
   }, []);
 
   const generatePDF = async () => {
+    // Number formatting function
+    const formatNumber = (num, digits = 2) => {
+      return num.toLocaleString("en-IN", {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      });
+    };
+
+    const convertToWords = (num) => {
+      if (num === 0) return "Zero";
+    
+      const ones = [
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", 
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", 
+        "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+      ];
+      
+      const tens = [
+        "", "", "Twenty", "Thirty", "Forty", "Fifty", 
+        "Sixty", "Seventy", "Eighty", "Ninety"
+      ];
+    
+      const convertSection = (n) => {
+        if (n === 0) return "";
+        
+        if (n < 20) return ones[n] + " ";
+        
+        if (n < 100) {
+          return tens[Math.floor(n / 10)] + 
+                 (n % 10 !== 0 ? " " + ones[n % 10] : "") + " ";
+        }
+        
+        if (n < 1000) {
+          return ones[Math.floor(n / 100)] + " Hundred " + 
+                 (n % 100 !== 0 ? "and " + convertSection(n % 100) : "");
+        }
+        
+        return "";
+      };
+    
+      const crore = Math.floor(num / 10000000);
+      const lakh = Math.floor((num % 10000000) / 100000);
+      const thousand = Math.floor((num % 100000) / 1000);
+      const remainder = num % 1000;
+    
+      let result = "";
+    
+      if (crore > 0) {
+        result += convertSection(crore) + "Crore ";
+      }
+    
+      if (lakh > 0) {
+        result += convertSection(lakh) + "Lakh ";
+      }
+    
+      if (thousand > 0) {
+        result += convertSection(thousand) + "Thousand ";
+      }
+    
+      if (remainder > 0) {
+        result += convertSection(remainder);
+      }
+    
+      return result.trim() + " Rupees Only";
+    };
+    console.log(invoiceDetails)
     try {
       setLoading(true);
       setError(null);
@@ -223,32 +342,14 @@ const GenerateInvoiceModal = ({
         format: "a4",
       });
 
-      const letterheadImage = new Image();
-
-      // A4 dimensions in points
       const pageWidth = 595.28;
       const pageHeight = 841.89;
-      await new Promise((resolve, reject) => {
-        letterheadImage.onload = () => {
-          // Add letterhead image to PDF
-          doc.addImage(
-            letterheadImage,
-            "PNG",
-            0,
-            0,
-            pageWidth,
-            175 * (pageWidth / 991)
-          );
-          resolve();
-        };
-        letterheadImage.onerror = () => {
-          reject(new Error("Failed to load letterhead image"));
-        };
-        letterheadImage.src = logoImage;
-      });
+      const margin = 30;
+      const columnSpacing = 20;
 
-      // Adjust startY to account for letterhead height
-      const letterheadHeight = 175 * (pageWidth / 991);
+      // Calculate column widths
+      const leftColumnWidth = (pageWidth - 3 * margin) / 2;
+      const rightColumnWidth = (pageWidth - 3 * margin) / 2;
 
       // Calculate totals with improved precision
       const totalAmount = products.reduce(
@@ -271,160 +372,118 @@ const GenerateInvoiceModal = ({
         totalAmount +
         (gstRates.useIGST ? gstAmount.igst : gstAmount.sgst + gstAmount.cgst);
 
-      // Number formatting function
-      const formatNumber = (num, digits = 2) => {
-        return num.toLocaleString("en-IN", {
-          minimumFractionDigits: digits,
-          maximumFractionDigits: digits,
-        });
-      };
-      const convertToWords = (num) => {
-        const a = [
-          "",
-          "One ",
-          "Two ",
-          "Three ",
-          "Four ",
-          "Five ",
-          "Six ",
-          "Seven ",
-          "Eight ",
-          "Nine ",
-          "Ten ",
-          "Eleven ",
-          "Twelve ",
-          "Thirteen ",
-          "Fourteen ",
-          "Fifteen ",
-          "Sixteen ",
-          "Seventeen ",
-          "Eighteen ",
-          "Nineteen ",
-        ];
-        const b = [
-          "",
-          "",
-          "Twenty ",
-          "Thirty ",
-          "Forty ",
-          "Fifty ",
-          "Sixty ",
-          "Seventy ",
-          "Eighty ",
-          "Ninety ",
-        ];
+      // Letterhead Image
+      const letterheadImage = new Image();
+      await new Promise((resolve, reject) => {
+        letterheadImage.onload = () => {
+          doc.addImage(
+            letterheadImage,
+            "PNG",
+            0,
+            0,
+            pageWidth,
+            175 * (pageWidth / 991)
+          );
+          resolve();
+        };
+        letterheadImage.onerror = () => {
+          reject(new Error("Failed to load letterhead image"));
+        };
+        letterheadImage.src = logoImage;
+      });
 
-        function inWords(n) {
-          if (n < 20) return a[n];
-          const digit = Math.floor(n / 10);
-          const remainder = n % 10;
-          return b[digit] + (remainder > 0 ? a[remainder] : "");
-        }
+      const letterheadHeight = 175 * (pageWidth / 991);
+      let currentY = letterheadHeight + 50;
 
-        const crore = Math.floor(num / 10000000);
-        const lakhs = Math.floor((num % 10000000) / 100000);
-        const thousands = Math.floor((num % 100000) / 1000);
-        const hundreds = Math.floor(num % 1000);
-
-        let result = "";
-        if (crore > 0) result += inWords(crore) + "Crore ";
-        if (lakhs > 0) result += inWords(lakhs) + "Lakh ";
-        if (thousands > 0) result += inWords(thousands) + "Thousand ";
-        if (hundreds > 0) result += inWords(hundreds);
-
-        return result.trim() + " Only";
-      };
-
+      // Tax Invoice Title
       doc.setFontSize(16);
-      doc.setFont("arial", "bold");
-      doc.rect(30, letterheadHeight + 20, 520, 30);
-      doc.text(
-        "TAX INVOICE",
-        doc.internal.pageSize.width / 2,
-        letterheadHeight + 40,
-        {
-          align: "center",
-        }
-      );
-
-      doc.setFontSize(16);
-      doc.setFont("arial", "bold");
-      doc.rect(30, letterheadHeight + 20, 520, 30);
-      doc.text(
-        "TAX INVOICE",
-        doc.internal.pageSize.width / 2,
-        letterheadHeight + 40,
-        {
-          align: "center",
-        }
-      );
+      doc.setFont("helvetica", "bold");
+      doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
+        align: "center",
+      });
 
       // Billing Details Section
       doc.setFontSize(10);
-      doc.setFont("arial", "normal");
 
-      // To Section (Customer Details)
-      doc.rect(30, letterheadHeight + 50, 270, 110);
-      // doc.rect(30, letterheadHeight + 40, 260, 80);
-      doc.text("To:", 40, letterheadHeight + 75);
-      doc.setFont("arial", "bold");
-      doc.text(invoiceDetails.customerDetails.name, 40, letterheadHeight + 90);
-      doc.setFont("arial", "normal");
-      doc.text(
+      // Dynamic Customer Details
+      const renderAddressBlock = (
+        x,
+        y,
+        width,
+        title,
+        name,
+        address,
+        additionalDetails = {}
+      ) => {
+        // Box
+        doc.rect(x, y, width, 130);
+
+        // Title
+        doc.setFont("helvetica", "normal");
+        doc.text(title, x + 10, y + 25);
+
+        // Name and Address
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        const nameLines = doc.splitTextToSize(name, width - 20);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        const addressLines = doc.splitTextToSize(address, width - 20);
+
+        let lineY = y + 40;
+        nameLines.forEach((line) => {
+          doc.text(line, x + 10, lineY);
+          lineY += 15;
+        });
+
+        addressLines.forEach((line) => {
+          doc.text(line, x + 10, lineY);
+          lineY += 12;
+        });
+
+        // Additional Details
+        if (Object.keys(additionalDetails).length) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          let detailY = y + 130 + 15;
+          Object.entries(additionalDetails).forEach(([key, value]) => {
+            doc.text(`${key}: ${value}`, x + 10, detailY);
+            detailY += 15;
+          });
+        }
+      };
+
+      // Render Customer and Company Blocks
+      renderAddressBlock(
+        margin,
+        currentY,
+        leftColumnWidth,
+        "To:",
+        invoiceDetails.customerDetails.name,
         invoiceDetails.customerDetails.address,
-        40,
-        letterheadHeight + 105,
         {
-          maxWidth: 230,
+          "GST No": invoiceDetails.customerDetails.gst || "N/A",
+          "PAN No": invoiceDetails.customerDetails.pan || "N/A",
+          "State Code": invoiceDetails.companyDetails.stateCode || "27",
         }
       );
 
-      // Invoice Details Section
-      doc.rect(300, letterheadHeight + 50, 250, 110);
-      doc.text("From:", 310, letterheadHeight + 75);
-      // doc.text("Invoice Details:", 310, letterheadHeight + 75);
-      doc.setFont("arial", "bold");
-      doc.text(
-        `${invoiceDetails.companyDetails.name}`,
-        310,
-        letterheadHeight + 90
-      );
-      doc.setFont("arial", "normal");
-      doc.text(
-        `Registered Address: ${invoiceDetails.companyDetails.address}`,
-        310,
-        letterheadHeight + 120
+      renderAddressBlock(
+        margin + leftColumnWidth + columnSpacing,
+        currentY,
+        rightColumnWidth,
+        "From:",
+        invoiceDetails.companyDetails.name,
+        invoiceDetails.companyDetails.address,
+        {
+          "Invoice Date": invoiceDetails.companyDetails.date || "N/A",
+          "Invoice No": invoiceDetails.billNumber,
+        }
       );
 
-      // Additional Details
-      doc.rect(30, letterheadHeight + 160, 270, 50);
-      doc.text(
-        `GST No: ${invoiceDetails.customerDetails.gst || "N/A"}`,
-        40,
-        letterheadHeight + 175
-      );
-      doc.text(
-        `PAN No: ${invoiceDetails.companyDetails.pan}`,
-        40,
-        letterheadHeight + 190
-      );
-      doc.text(
-        `State Code: ${invoiceDetails.companyDetails.stateCode}`,
-        40,
-        letterheadHeight + 205
-      );
-
-      doc.rect(300, letterheadHeight + 160, 250, 50);
-      doc.text(
-        `Invoice Date: ${invoiceDetails.companyDetails.date || "N/A"}`,
-        310,
-        letterheadHeight + 175
-      );
-      doc.text(
-        `Invoice No: ${invoiceDetails.billNumber}`,
-        310,
-        letterheadHeight + 190
-      );
+      // Move to next section
+      currentY += 180;
 
       // Product Table
       const tableColumn = [
@@ -445,103 +504,149 @@ const GenerateInvoiceModal = ({
       ]);
 
       doc.autoTable({
-        startY: letterheadHeight + 230,
-        startX: 20,
+        startY: currentY + 10,
         head: [tableColumn],
         body: tableRows,
         theme: "grid",
         styles: {
-          fontSize: 9,
+          fontSize: 10,
           cellPadding: 5,
           overflow: "linebreak",
-          columnWidth: "wrap",
         },
         headStyles: {
           fillColor: [41, 128, 185],
           textColor: 255,
-        },
-        columnStyles: {
-          0: { width: 20 },
-          1: { width: 150 },
-          2: { width: 50 },
-          3: { width: 50 },
-          4: { width: 50 },
-          5: { width: 50 },
+          fontSize: 12,
         },
       });
 
       // Financial Summary
       const finalY = doc.previousAutoTable.finalY + 20;
+      const financialDetails = [
+        { label: "Total Amount", value: formatNumber(totalAmount) },
+        ...(gstRates.useIGST
+          ? [
+              {
+                label: `IGST @${gstRates.igst}%`,
+                value: formatNumber(gstAmount.igst),
+              },
+            ]
+          : [
+              {
+                label: `SGST @${gstRates.sgst}%`,
+                value: formatNumber(gstAmount.sgst),
+              },
+              {
+                label: `CGST @${gstRates.cgst}%`,
+                value: formatNumber(gstAmount.cgst),
+              },
+            ]),
+        { label: "Grand Total", value: formatNumber(grandTotal), bold: true },
+      ];
 
+      // Render Financial Summary
+      financialDetails.forEach((detail, index) => {
+        doc.setFont(detail.bold ? "helvetica-bold" : "helvetica", "normal");
+        doc.setFontSize(detail.bold ? 14 : 12);
+        doc.text(
+          `${detail.label}: ${detail.value}`,
+          margin + 10,
+          finalY + index * 20
+        );
+      });
+
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      // Update the tax section in PDF
-      doc.text(`Total Amount: ₹${formatNumber(totalAmount)}`, 30, finalY);
-      if (gstRates.useIGST) {
-        doc.text(
-          `IGST @${gstRates.igst}%: ₹${formatNumber(gstAmount.igst)}`,
-          30,
-          finalY + 20
-        );
-      } else {
-        doc.text(
-          `SGST @${gstRates.sgst}%: ₹${formatNumber(gstAmount.sgst)}`,
-          30,
-          finalY + 20
-        );
-        doc.text(
-          `CGST @${gstRates.cgst}%: ₹${formatNumber(gstAmount.cgst)}`,
-          30,
-          finalY + 40
-        );
-      }
-
-      doc.setFont("arial", "bold");
-      doc.text(`Grand Total: ${formatNumber(grandTotal)}`, 30, finalY + 60);
-
-      // // Amount in Words
-      // doc.setFont("arial", "normal");
-      // doc.text(`${convertToWords(Math.round(grandTotal))}`, 30, finalY + 60);
-
-      // Additional Transaction Details
-      doc.setFont("arial", "bold");
-      doc.rect(30, finalY + 70, 200, 150);
-      doc.text(`PAN No :-`, 35, finalY + 85);
-
-      doc.text(`${invoiceDetails.companyDetails.pan}`, 240, finalY + 85);
-
-      doc.text(`Provisional GST No :-`, 35, finalY + 100);
-
       doc.text(
-        `${invoiceDetails.customerDetails.gst || "N/A"}`,
-        240,
-        finalY + 100
+        `Amount in Words: ${convertToWords(Math.round(grandTotal))}`,
+        margin + 10,
+        finalY + financialDetails.length * 20 + 20
       );
-      doc.text("HSN /SAC code :-", 35, finalY + 115);
-      doc.text("996412", 240, finalY + 115);
 
-      doc.text("Nature of Transaction :-", 35, finalY + 130);
+      const renderBottomDetailsInTwoColumns = (
+        doc,
+        margin,
+        bottomY,
+        bottomDetails
+      ) => {
+        // Draw main rectangle
+        doc.rect(
+          margin,
+          bottomY + 100,
+          doc.internal.pageSize.width - 2 * margin,
+          160
+        );
 
-      doc.text("BUSINESS TO BUSINESS", 240, finalY + 130);
+        // Calculate column widths
+        const pageWidth = doc.internal.pageSize.width;
+        const columnWidth = (pageWidth - 3 * margin) / 2;
 
-      doc.text("Service Category :-", 35, finalY + 145);
-      doc.text("EMPLOYEE TRANSPORTATION", 240, finalY + 145);
-      doc.text("Bank Name & Branch :-", 35, finalY + 160);
-      doc.text("AMANORA PUNE MH 411028", 240, finalY + 160);
-      doc.text("Account No :-", 35, finalY + 175);
-      doc.text("2221262245805293", 240, finalY + 175);
-      doc.text("IFSC Code :-", 35, finalY + 190);
-      doc.text("AUBL0002622", 240, finalY + 190);
+        // Set font
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
 
-      doc.rect(230, finalY + 70, 270, 150);
+        // Split details into two columns
+        const leftColumnDetails = bottomDetails;
+        const rightColumnDetails = bottomDetails;
 
-      // Save the PDF
+        // Render Left Column - Labels
+        doc.setFont("helvetica", "bold");
+        leftColumnDetails.forEach((detail, index) => {
+          doc.text(
+            `${detail.label} :-`,
+            margin + 10,
+            bottomY + 120 + index * 15
+          );
+        });
+
+        // Render Right Column - Labels
+        doc.setFont("helvetica", "bold");
+        rightColumnDetails.forEach((detail, index) => {
+          doc.text(
+            `${detail.value}`,
+            margin + columnWidth + 20,
+            bottomY + 120 + index * 15
+          );
+        });
+
+        doc.setDrawColor(200, 200, 200);
+        doc.line(
+          margin + columnWidth + 10,
+          bottomY + 100,
+          margin + columnWidth + 10,
+          bottomY + 260
+        );
+      };
+
+      // Bottom Details Section
+      const bottomDetails = [
+        { label: "PAN No", value: invoiceDetails.companyDetails.pan },
+        {
+          label: "Provisional GST No",
+          value: "27AAQCM3825L1ZW",
+        },
+        { label: "HSN/SAC Code", value: "996412" },
+        { label: "Nature of Transaction", value: "BUSINESS TO BUSINESS" },
+        { label: "Service Category", value: "EMPLOYEE TRANSPORTATION" },
+        { label: "Bank Name & Branch", value: "AMANORA PUNE MH 411028" },
+        { label: "Account No", value: "2221262245805293" },
+        { label: "IFSC Code", value: "AUBL0002622" },
+      ];
+
+      // Render Bottom Details
+      // const bottomY = finalY + 100;
+      const bottomY = finalY + 100;
+      renderBottomDetailsInTwoColumns(doc, margin, bottomY, bottomDetails);
+
+      // Save PDF
       doc.save(`invoice_${invoiceDetails.billNumber}.pdf`);
-      // addDataToDB(products, invoiceDetails);
       saveInvoiceToDB(products, invoiceDetails);
       onClose();
     } catch (error) {
-      console.error("Error adding letterhead image:", error);
-      toast.error("Failed to add letterhead image");
+      console.error("PDF Generation Error:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -576,108 +681,69 @@ const GenerateInvoiceModal = ({
     return true;
   };
 
+  const handleCompanySelect = (selectedCompany) => {
+    setInvoiceDetails((prev) => ({
+      ...prev,
+      customerDetails: {
+        company_id: selectedCompany.company_id,
+        name: selectedCompany.company_name,
+        address: selectedCompany.address,
+        gst: selectedCompany.gst_number,
+        pan: selectedCompany.pan_number,
+        stateCode: "27",
+      },
+    }));
+  };
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto bg-white shadow-lg border rounded-lg p-6">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+        onClick={onClose} // Close modal when clicking outside
+      >
+        <div
+          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl p-6"
+          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+        >
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-600 hover:text-gray-900"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+
           <h1 className="text-2xl font-bold mb-6">Generate Invoice</h1>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
-            {/* Customer Details Input */}
             <div>
-              <label className="block mb-2">Select Company</label>
-              <select
-                onChange={handleCompanyChange}
-                className="w-full border px-2 py-1"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Select a Company
-                </option>
-                {companies.map((company) => (
-                  <option key={company.company_id} value={company.company_id}>
-                    {company.company_name}
-                  </option>
-                ))}
-                <option value="other">Other</option>
-              </select>
-            </div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Select Company
+              </label>
 
-            {isOtherCompany && (
-              <div>
-                <label className="block mb-2">Company Name</label>
-                <input
-                  type="text"
-                  value={invoiceDetails.customerDetails.name}
-                  onChange={(e) =>
-                    setInvoiceDetails((prev) => ({
-                      ...prev,
-                      customerDetails: {
-                        ...prev.customerDetails,
-                        name: e.target.value,
-                      },
-                    }))
-                  }
-                  className="w-full border px-2 py-1"
-                  placeholder="Enter Company Name"
-                />
-              </div>
-            )}
-
-            {isOtherCompany && (
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block mb-2">Address</label>
-                  <input
-                    type="text"
-                    value={invoiceDetails.customerDetails.address}
-                    onChange={(e) =>
-                      setInvoiceDetails((prev) => ({
-                        ...prev,
-                        customerDetails: {
-                          ...prev.customerDetails,
-                          address: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full border px-2 py-1"
-                    placeholder="Enter Company Address"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2">GST Number</label>
-                  <input
-                    type="text"
-                    value={invoiceDetails.customerDetails.gst}
-                    onChange={(e) =>
-                      setInvoiceDetails((prev) => ({
-                        ...prev,
-                        customerDetails: {
-                          ...prev.customerDetails,
-                          gst: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full border px-2 py-1"
-                    placeholder="Enter GST Number"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Product Input Section */}
-            <div>
-              <label className="block mb-2">Product Description</label>
-              <input
-                type="text"
-                value={products[0].description}
-                onChange={(e) =>
-                  handleProductChange(0, "description", e.target.value)
-                }
-                className="w-full border px-2 py-1"
+              <CompanySearch
+                companies={companies}
+                onSelectCompany={handleCompanySelect}
+                onAddNewCompany={() => {
+                  setIsOtherCompany(true);
+                  setIsAddCompanyModalOpen(true);
+                }}
               />
             </div>
           </div>
@@ -993,6 +1059,16 @@ const GenerateInvoiceModal = ({
           </div>
         </div>
       </div>
+      {isAddCompanyModalOpen && (
+        <AddCompanyModal
+          isOpen={isAddCompanyModalOpen}
+          onClose={() => {
+            setIsAddCompanyModalOpen(false);
+            setIsOtherCompany(false);
+          }}
+          onAdd={handleAddCompany}
+        />
+      )}
     </div>
   );
 };

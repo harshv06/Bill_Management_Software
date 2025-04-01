@@ -1,125 +1,153 @@
-// components/PurchaseInvoices/NewPurchaseInvoice.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import config from "../../../utils/GlobalConfig";
 import Sidebar from "../../Sidebar";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { toast } from "react-hot-toast";
+import Select from "react-select";
 
 const NewPurchaseInvoice = () => {
-  const inputLabels = {
-    description: "Item Description",
-    quantity: "Quantity",
-    rate: "Rate per Unit",
-    gst_rate: "GST Rate",
-    amount: "Base Amount",
-    gst_amount: "GST Amount",
-  };
-
   const navigate = useNavigate();
+  const [vendors, setVendors] = useState([]);
   const [formData, setFormData] = useState({
-    vendor_name: "",
-    invoice_date: "",
-    invoice_number: "", // Will be auto-generated
+    vendor: null,
+    invoice_date: new Date().toISOString().split("T")[0],
+    invoice_number: "",
     items: [
       {
         description: "",
         quantity: 1,
         rate: 0,
-        gst_rate: 18, // Default GST rate
+        gst_rate: null,
         gst_amount: 0,
         amount: 0,
+        custom_gst_input: "", // Add this field
       },
     ],
     subtotal: 0,
     total_gst: 0,
     total_amount: 0,
+    notes: "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [customGstRate, setCustomGstRate] = useState("");
+
+  // Fetch vendors on component mount
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${config.API_BASE_URL}/getAllCompaniesWithoutPagination`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        console.log(response);
+
+        // Transform vendor data for react-select
+        const vendorOptions = response.data.data.map((vendor) => ({
+          value: vendor.vendor_id,
+          label: `${vendor.company_name}`,
+          gst_number: vendor.gst_number,
+          address: vendor.address,
+        }));
+
+        setVendors(vendorOptions);
+      } catch (error) {
+        toast.error("Failed to fetch vendors");
+      }
+    };
+
+    fetchVendors();
+    generateInvoiceNumber();
+  }, []);
 
   const generateInvoiceNumber = () => {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
 
-    // Get the current counter from localStorage
     const currentCounter =
       localStorage.getItem("purchaseInvoiceCounter") || "0";
     const newCounter = (parseInt(currentCounter) + 1)
       .toString()
       .padStart(4, "0");
 
-    // Store the new counter
     localStorage.setItem("purchaseInvoiceCounter", newCounter);
 
-    // Format: PI-YYYYMM-0001
-    return `PI-${year}${month}-${newCounter}`;
+    const invoiceNumber = `PI-${year}${month}-${newCounter}`;
+    setFormData((prev) => ({ ...prev, invoice_number: invoiceNumber }));
   };
 
-  const resetCounterIfNewMonth = () => {
-    const lastResetDate = localStorage.getItem("lastCounterResetDate");
-    const today = new Date();
-    const thisMonth = `${today.getFullYear()}-${today.getMonth() + 1}`;
-
-    if (lastResetDate !== thisMonth) {
-      localStorage.setItem("purchaseInvoiceCounter", "0");
-      localStorage.setItem("lastCounterResetDate", thisMonth);
-    }
-  };
-
-  // Fetch auto-generated invoice number when component mounts
-  useEffect(() => {
-    resetCounterIfNewMonth();
+  const handleVendorChange = (selectedVendor) => {
     setFormData((prev) => ({
       ...prev,
-      invoice_number: generateInvoiceNumber(),
-      invoice_date: new Date().toISOString().split("T")[0],
+      vendor: selectedVendor,
     }));
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const calculateItemAmount = (item) => {
-    const baseAmount = item.quantity * item.rate;
-    const gstAmount = (baseAmount * item.gst_rate) / 100;
-    return {
-      baseAmount,
-      gstAmount,
-      totalAmount: baseAmount + gstAmount,
-    };
   };
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    newItems[index] = {
-      ...newItems[index],
-      [field]: value,
-    };
 
-    // Recalculate amounts for this item
-    const { baseAmount, gstAmount, totalAmount } = calculateItemAmount(
-      newItems[index]
-    );
-    newItems[index].amount = baseAmount;
-    newItems[index].gst_amount = gstAmount;
+    // Special handling for custom GST
+    if (field === "gst_rate") {
+      if (value === "custom") {
+        // Reset to custom input mode
+        newItems[index] = {
+          ...newItems[index],
+          gst_rate: null,
+          custom_gst_input: "",
+        };
+      } else {
+        // For predefined GST rates
+        newItems[index] = {
+          ...newItems[index],
+          gst_rate: parseFloat(value),
+          custom_gst_input: "",
+        };
+      }
+    } else if (field === "custom_gst_input") {
+      // Handle custom GST input
+      const customRate = parseFloat(value);
+      newItems[index] = {
+        ...newItems[index],
+        gst_rate: isNaN(customRate) ? null : customRate, // Allow ALL numeric values
+        custom_gst_input: value,
+      };
+    } else {
+      // Handle other fields normally
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value,
+      };
+    }
+
+    // Recalculate amounts
+    const updatedItems = newItems.map((item) => {
+      const baseAmount = item.quantity * item.rate;
+      const gstRate = item.gst_rate || 0;
+      const gstAmount = (baseAmount * gstRate) / 100;
+
+      return {
+        ...item,
+        amount: baseAmount,
+        gst_amount: gstAmount,
+      };
+    });
 
     // Calculate totals
-    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-    const total_gst = newItems.reduce((sum, item) => sum + item.gst_amount, 0);
+    const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+    const total_gst = updatedItems.reduce(
+      (sum, item) => sum + item.gst_amount,
+      0
+    );
     const total_amount = subtotal + total_gst;
 
     setFormData((prev) => ({
       ...prev,
-      items: newItems,
+      items: updatedItems,
       subtotal,
       total_gst,
       total_amount,
@@ -135,7 +163,7 @@ const NewPurchaseInvoice = () => {
           description: "",
           quantity: 1,
           rate: 0,
-          gst_rate: 18,
+          gst_rate: null,
           gst_amount: 0,
           amount: 0,
         },
@@ -162,26 +190,72 @@ const NewPurchaseInvoice = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validation
+    if (!formData.vendor) {
+      toast.error("Please select a vendor");
+      return;
+    }
+
+    if (formData.items.length === 0) {
+      toast.error("Please add at least one item");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
     try {
-      // Generate PDF first
-      generatePDF();
-
-      // Then submit to backend
       const token = localStorage.getItem("token");
-      await axios.post(`${config.API_BASE_URL}/`, formData, {
+      const submitData = {
+        ...formData,
+        vendor_id: formData.vendor.value,
+        vendor_name: formData.vendor.label,
+      };
+
+      const response = await axios.post(
+        `${config.API_BASE_URL}/createPurchaseInvocie`,
+        submitData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const DayBookData = {
+        account_head: "Expenses",
+        amount: response.data.data.total_amount,
+        bank_account_id: null,
+        bank_name: null,
+        bank_account_number: null,
+        bank_ifsc_code: null,
+        car_id: null,
+        category: "DIRECT",
+        company_id: response.data.data.vendor_id,
+        description: `Purchase invoice for ${response.data.data.vendor_name} `,
+        gst_applicable: response.data.data.total_gst > 0 ? true : false,
+        party_name: response.data.data.vendor_name,
+        party_type: "Vendor",
+        payment_method: "cash",
+        reference_number: response.data.data.invoice_number,
+        sub_group: "PURCHASE",
+        transaction_date: new Date(),
+        transaction_type: "DEBIT",
+        voucher_type: "Purchase",
+      };
+
+      await axios.post(`${config.API_BASE_URL}/daybook/transactions`, DayBookData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
-
-      alert("Invoice created successfully and PDF has been generated!");
+      console.log(response);
+      toast.success("Purchase Invoice created successfully");
       navigate("/purchase-invoices");
     } catch (error) {
-      setError(
+      toast.error(
         error.response?.data?.message || "Failed to create purchase invoice"
       );
     } finally {
@@ -189,277 +263,279 @@ const NewPurchaseInvoice = () => {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-
-    // Add company logo and header
-    doc.setFontSize(20);
-    doc.text("Purchase Invoice", pageWidth / 2, 20, { align: "center" });
-
-    // Add invoice details
-    doc.setFontSize(12);
-    doc.text(`Invoice Number: ${formData.invoice_number}`, 15, 40);
-    doc.text(`Date: ${formData.invoice_date}`, 15, 50);
-    doc.text(`Vendor: ${formData.vendor_name}`, 15, 60);
-
-    // Add items table
-    const tableColumns = [
-      "Description",
-      "Qty",
-      "Rate",
-      "GST %",
-      "Amount",
-      "GST Amt",
-      "Total",
-    ];
-
-    const tableRows = formData.items.map((item) => [
-      item.description,
-      item.quantity,
-      `₹${item.rate.toFixed(2)}`,
-      `${item.gst_rate}%`,
-      `₹${item.amount.toFixed(2)}`,
-      `₹${item.gst_amount.toFixed(2)}`,
-      `₹${(item.amount + item.gst_amount).toFixed(2)}`,
-    ]);
-
-    doc.autoTable({
-      head: [tableColumns],
-      body: tableRows,
-      startY: 70,
-      theme: "grid",
-      headStyles: { fillColor: [71, 85, 105] },
-      foot: [
-        [
-          "Subtotal",
-          "",
-          "",
-          "",
-          `₹${formData.subtotal.toFixed(2)}`,
-          `₹${formData.total_gst.toFixed(2)}`,
-          `₹${formData.total_amount.toFixed(2)}`,
-        ],
-      ],
-      footStyles: { fillColor: [241, 245, 249] },
-    });
-
-    // Add terms and conditions
-    const finalY = doc.previousAutoTable.finalY || 70;
-    doc.setFontSize(10);
-    doc.text("Terms and Conditions:", 15, finalY + 20);
-    doc.text("1. Payment is due within 30 days", 15, finalY + 30);
-    doc.text("2. Goods once sold cannot be returned", 15, finalY + 40);
-
-    // Add footer
-    doc.setFontSize(10);
-    doc.text("Thank you for your business!", pageWidth / 2, finalY + 60, {
-      align: "center",
-    });
-
-    // Save the PDF
-    doc.save(`Purchase_Invoice_${formData.invoice_number}.pdf`);
-  };
-
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-8 overflow-y-auto">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-lg shadow p-6"
-        >
-          {/* Header Section */}
-          <div className="grid grid-cols-3 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor Name *
-              </label>
-              <input
-                type="text"
-                name="vendor_name"
-                value={formData.vendor_name}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                required
-                placeholder="Enter vendor name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Invoice Number
-              </label>
-              <input
-                type="text"
-                value={formData.invoice_number}
-                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 cursor-not-allowed"
-                disabled
-              />
-              <span className="text-xs text-gray-500">Auto-generated</span>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Invoice Date *
-              </label>
-              <input
-                type="date"
-                name="invoice_date"
-                value={formData.invoice_date}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                required
-              />
-            </div>
-          </div>
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">
+            Create New Purchase Invoice
+          </h1>
 
-          {/* Items Section */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium">Invoice Items</h2>
-              <button
-                type="button"
-                onClick={addItem}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-              >
-                Add Item
-              </button>
+          <form onSubmit={handleSubmit}>
+            {/* Header Section */}
+            <div className="grid md:grid-cols-3 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor *
+                </label>
+                <Select
+                  options={vendors}
+                  value={formData.vendor}
+                  onChange={handleVendorChange}
+                  placeholder="Select Vendor"
+                  className="w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Invoice Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.invoice_number}
+                  readOnly
+                  className="w-full px-3 py-2 bg-gray-100 border rounded-md cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Invoice Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.invoice_date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      invoice_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Item Headers */}
-            <div className="grid grid-cols-7 gap-4 mb-2 text-sm font-medium text-gray-700">
-              <div className="col-span-2">Description</div>
-              <div>Quantity</div>
-              <div>Rate (₹)</div>
-              <div>GST Rate</div>
-              <div>Amount</div>
-              <div>Action</div>
-            </div>
+            {/* Items Section */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Invoice Items
+                </h2>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition"
+                >
+                  Add Item
+                </button>
+              </div>
 
-            {formData.items.map((item, index) => (
-              <div key={index} className="grid grid-cols-7 gap-4 mb-4">
-                <div className="col-span-2">
-                  <input
-                    type="text"
-                    placeholder="Item description"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleItemChange(index, "description", e.target.value)
-                    }
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Qty"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      handleItemChange(
-                        index,
-                        "quantity",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    min="1"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Rate"
-                    value={item.rate}
-                    onChange={(e) =>
-                      handleItemChange(
-                        index,
-                        "rate",
-                        parseFloat(e.target.value)
-                      )
-                    }
-                    min="0"
-                    step="0.01"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <select
-                    value={item.gst_rate}
-                    onChange={(e) =>
-                      handleItemChange(
-                        index,
-                        "gst_rate",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="12">12%</option>
-                    <option value="18">18%</option>
-                    <option value="28">28%</option>
-                  </select>
-                </div>
-                <div className="text-right">
-                  <div>₹{item.amount.toFixed(2)}</div>
-                  <div className="text-sm text-gray-500">
-                    +GST: ₹{item.gst_amount.toFixed(2)}
+              {formData.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-6 gap-4 mb-4 p-4 bg-gray-50 rounded-lg"
+                >
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Description *
+                    </label>
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) =>
+                        handleItemChange(index, "description", e.target.value)
+                      }
+                      placeholder="Item description"
+                      className="w-full px-3 py-2 border rounded-md"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Quantity *
+                    </label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        handleItemChange(
+                          index,
+                          "quantity",
+                          parseInt(e.target.value)
+                        )
+                      }
+                      min="1"
+                      className="w-full px-3 py-2 border rounded-md"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Rate (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      value={item.rate}
+                      onChange={(e) =>
+                        handleItemChange(
+                          index,
+                          "rate",
+                          parseFloat(e.target.value)
+                        )
+                      }
+                      min="0"
+                      step="0.01"
+                      className="w-full px-3 py-2 border rounded-md"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">
+                      GST Rate *
+                    </label>
+                    <div className="flex flex-col">
+                      <select
+                        value={
+                          item.gst_rate === null
+                            ? item.custom_gst_input
+                              ? "custom"
+                              : ""
+                            : // Check if it's a predefined rate
+                            [0, 5, 12, 18, 28].includes(item.gst_rate)
+                            ? item.gst_rate
+                            : "custom"
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleItemChange(index, "gst_rate", value);
+
+                          // If not custom, reset custom input
+                          if (value !== "custom") {
+                            const updatedItems = [...formData.items];
+                            updatedItems[index] = {
+                              ...updatedItems[index],
+                              custom_gst_input: "",
+                            };
+                            setFormData((prev) => ({
+                              ...prev,
+                              items: updatedItems,
+                            }));
+                          }
+                        }}
+                        className="w-full px-3 py-2 border rounded-md"
+                        required
+                      >
+                        <option value="">Select GST</option>
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                        <option value="custom">Custom GST</option>
+                      </select>
+
+                      {(item.gst_rate === null ||
+                        (item.gst_rate !== null &&
+                          ![0, 5, 12, 18, 28].includes(item.gst_rate))) && (
+                        <input
+                          type="number"
+                          value={item.custom_gst_input}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleItemChange(index, "custom_gst_input", value);
+                          }}
+                          placeholder="Enter Custom GST %"
+                          className="w-full px-3 py-2 border rounded-md mt-2"
+                          min="0"
+                          step="0.01"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">
+                        ₹{item.amount.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        GST: ₹{item.gst_amount.toFixed(2)}
+                      </div>
+                    </div>
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Totals Section */}
-          <div className="border-t pt-4">
-            <div className="flex justify-end">
-              <div className="w-64">
+            {/* Totals and Notes */}
+            <div className="grid md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  rows="4"
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Optional notes for this invoice"
+                />
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between mb-2">
-                  <span className="font-medium">Subtotal:</span>
-                  <span>₹{formData.subtotal.toFixed(2)}</span>
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-semibold">
+                    ₹{formData.subtotal.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between mb-2">
-                  <span className="font-medium">Total GST:</span>
-                  <span>₹{formData.total_gst.toFixed(2)}</span>
+                  <span className="text-gray-600">Total GST:</span>
+                  <span className="font-semibold">
+                    ₹{formData.total_gst.toFixed(2)}
+                  </span>
                 </div>
-                <div className="flex justify-between font-bold text-lg">
+                <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Grand Total:</span>
                   <span>₹{formData.total_amount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="mt-6 flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={() => navigate("/purchase-invoices")}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
-            >
-              {loading ? "Creating..." : "Create Invoice"}
-            </button>
-          </div>
-        </form>
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 mt-6 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => navigate("/purchase-invoices")}
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? "Creating..." : "Create Invoice"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

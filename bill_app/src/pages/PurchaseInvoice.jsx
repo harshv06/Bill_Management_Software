@@ -5,6 +5,7 @@ import config from "../utils/GlobalConfig";
 import Sidebar from "../components/Sidebar";
 import InvoiceDetailsModal from "../components/Modals/InvoiceModals/PurchaseInvoiceDetailsModal";
 import { generatePurchaseInvoicePDF } from "../utils/PurchaseInvoicePdfGenerator";
+import { useAuth } from "../context/authContext";
 
 const PurchaseInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -16,6 +17,7 @@ const PurchaseInvoices = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const onUpdate = () => {
     fetchPurchaseInvoices();
@@ -53,9 +55,10 @@ const PurchaseInvoices = () => {
     }
   };
 
-  const handleViewInvoice = (invoice) => {
-    if (event.target.tagName.toLowerCase() === "button") {
-      return;
+  const handleViewInvoice = (invoice, event) => {
+    // If an event is passed, prevent any default behavior
+    if (event) {
+      event.stopPropagation();
     }
     setSelectedInvoice(invoice);
   };
@@ -165,12 +168,14 @@ const PurchaseInvoices = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             Purchase Invoices
           </h1>
-          <Link
-            to="/purchase-invoices/new"
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Create New Purchase Invoice
-          </Link>
+          {user.permissions.includes("purchase_invoices:create") && (
+            <Link
+              to="/purchase-invoices/new"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Create New Purchase Invoice
+            </Link>
+          )}
         </div>
 
         <FilterSection />
@@ -254,12 +259,16 @@ const PurchaseInvoices = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-3">
-                        <Link
-                          to={`/purchase-invoices/${invoice.purchase_invoice_id}`}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row click
+                            handleViewInvoice(invoice, e);
+                          }}
                           className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                         >
                           View
-                        </Link>
+                        </button>
+
                         <button
                           onClick={(e) => handleDownloadPDF(invoice, e)}
                           className="text-green-600 hover:text-green-900 text-sm font-medium"

@@ -9,7 +9,7 @@ const PrivateRoute = ({
   fallback = null,
 }) => {
   const { isAuthenticated, user } = useAuth();
-  // console.log(user.permissions);
+  console.log(user);
   // console.log(!user.permissions.includes(requiredPermission));
 
   // Unauthorized Component

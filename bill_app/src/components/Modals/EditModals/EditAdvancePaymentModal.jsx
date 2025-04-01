@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../Modal";
 import Config from "../../../utils/GlobalConfig";
+import TransactionSyncService from "../../../utils/TransactionSyncService";
+import axios from "axios";
 
 const EditCarPaymentModal = ({
   isOpen,
@@ -9,11 +11,15 @@ const EditCarPaymentModal = ({
   carId,
   onPaymentUpdated,
 }) => {
+  console.log(payment);
   const [formData, setFormData] = useState({
-    amount: "",
-    payment_date: "",
-    payment_type: "advance",
-    notes: "",
+    amount: payment.amount || "",
+    payment_method: payment.payment_method || "cash",
+    payment_date: payment.payment_date
+      ? new Date(payment.payment_date).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    status: payment.status || "completed",
+    notes: payment.notes || "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -23,7 +29,9 @@ const EditCarPaymentModal = ({
     if (payment) {
       setFormData({
         amount: payment.amount,
-        payment_date: new Date(payment.payment_date).toISOString().split("T")[0],
+        payment_date: new Date(payment.payment_date)
+          .toISOString()
+          .split("T")[0],
         payment_type: payment.payment_type || "advance",
         notes: payment.notes || "",
       });
@@ -44,34 +52,36 @@ const EditCarPaymentModal = ({
     setError(null);
 
     try {
-      const response = await fetch(
+      const carPaymentResponse = await axios.put(
         `${Config.API_BASE_URL}/cars/payments/update/${payment.payment_id}`,
+        formData,
         {
-          method: "PUT",
           headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            ...formData,
-            car_id: carId,
-          }),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update payment");
-      }
-
-      const data = await response.json();
-      onPaymentUpdated();
+      const updatedPayment = await TransactionSyncService.syncTransaction(
+        "daybook",
+        payment.payment_id,
+        {
+          ...formData,
+          car_id: carId,
+        }
+      );
+      console.log(updatedPayment);
+      // Call the callback to refresh data
+      onPaymentUpdated(updatedPayment);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(error.response?.data?.message || "Failed to update payment");
     } finally {
       setLoading(false);
     }
   };
+  if (!isOpen) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Payment Details">

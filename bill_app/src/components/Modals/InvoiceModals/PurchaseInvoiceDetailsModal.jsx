@@ -1,13 +1,29 @@
 // components/PurchaseInvoices/InvoiceDetailsModal.jsx
 import React, { useState } from "react";
 import axios from "axios";
-import config from '../../../utils/GlobalConfig'
-const InvoiceDetailsModal = ({ invoice, onClose,onUpdate }) => {
+import config from "../../../utils/GlobalConfig";
+import { generatePurchaseInvoicePDF } from "../../../utils/PurchaseInvoicePdfGenerator";
+import { toast } from "react-toastify";
+
+const InvoiceDetailsModal = ({ invoice, onClose, onUpdate }) => {
   const [status, setStatus] = useState(invoice.status);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState(null);
-  const handleDownloadPDF = () => {
-    generatePurchaseInvoicePDF(invoice);
+  const handleDownloadPDF = async (event) => {
+    if (event) {
+      event.stopPropagation(); // Prevent any unintended event propagation
+    }
+    try {
+      setIsDownloading(true);
+      generatePurchaseInvoicePDF(invoice);
+      toast.success("Invoice PDF generated successfully");
+    } catch (error) {
+      console.error("Failed to download invoice:", error);
+      toast.error("Failed to generate invoice PDF");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleStatusChange = (newStatus) => {
@@ -272,10 +288,14 @@ const InvoiceDetailsModal = ({ invoice, onClose,onUpdate }) => {
           <div className="mt-8 flex justify-end space-x-4">
             <button
               onClick={handleDownloadPDF}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+              disabled={isDownloading}
+              className={`px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors ${
+                isDownloading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              Download PDF
+              {isDownloading ? "Generating..." : "Download PDF"}
             </button>
+
             <button
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"

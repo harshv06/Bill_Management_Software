@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 import config from "../utils/GlobalConfig";
+import { COLOR_PALETTE, CHART_COLORS } from "../utils/Themes";
 import {
   BarChart,
   Bar,
@@ -28,23 +29,25 @@ import {
 import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
-
-  const navigate=useNavigate();
+  const navigate = useNavigate();
   const handlePendingPaymentsClick = () => {
-    navigate('/invoices?status=pending');
+    navigate("/invoices?status=pending");
   };
 
   // State for dashboard data
   const [dashboardData, setDashboardData] = useState({
     totalCars: 0,
     totalExpenses: 0,
-    total_expense: 0, // Add this line
+    total_expense: 0,
     totalRevenue: 0,
     totalInvoices: 0,
     monthlyRevenue: [],
     expenseBreakdown: [],
     invoiceStatusBreakdown: [],
-    totalRemainingAmount: 0, // Add this
+    totalRemainingAmount: 0,
+    daybookDebitTransactions: [],
+    totalDaybookDebitAmount: 0,
+    purchaseInvoice:0,
   });
 
   const [startDate, setStartDate] = useState(
@@ -67,6 +70,7 @@ function Dashboard() {
   const [revenueTimeframe, setRevenueTimeframe] = useState("monthly");
   const [filteredExpenseData, setFilteredExpenseData] = useState([]);
   const [filteredRevenueData, setFilteredRevenueData] = useState([]);
+  const [expenseLineData, setExpenseLineData] = useState([]);
 
   // Colors for charts
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
@@ -84,17 +88,24 @@ function Dashboard() {
     "Nov",
     "Dec",
   ];
+
   // Add this after your existing state declarations
   const [isFilteredDataLoading, setIsFilteredDataLoading] = useState(false);
 
-  // Update the fetchFilteredData function
+  // Enhanced Loading Component
+  const LoadingSpinner = () => (
+    <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
+      <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent"></div>
+    </div>
+  );
+
+  // First useEffect for fetching dashboard data and filtered data
   useEffect(() => {
     const fetchFilteredData = async () => {
       try {
         setIsFilteredDataLoading(true);
         const token = localStorage.getItem("token");
 
-        // Use the filtered data from the main dashboard response
         const response = await axios.get(`${config.API_BASE_URL}/dashboard`, {
           params: {
             month: selectedExpenseMonth,
@@ -108,7 +119,7 @@ function Dashboard() {
         });
 
         const data = response.data || {};
-
+        console.log(response)
         const transformedExpenseBreakdown = (data.expenseBreakdown || []).map(
           (item) => ({
             ...item,
@@ -116,7 +127,7 @@ function Dashboard() {
             payment_type: item.payment_type || "Unknown",
           })
         );
-        console.log(data);
+
         setDashboardData({
           totalCars: data.totalCars || 0,
           totalExpenses: data.totalExpenses || 0,
@@ -127,60 +138,30 @@ function Dashboard() {
           invoiceStatusBreakdown: data.invoiceStatusBreakdown || [],
           total_expense: data.total_expenses || 0,
           totalRemainingAmount: data.totalRemainingAmount || 0,
+          daybookDebitTransactions: data.daybookDebitTransactions || [],
+          totalDaybookDebitAmount: data.totalDaybookDebitAmount || 0,
+          dayBookDebitTotalAmount:
+            data.daybookDebitTransactionBreakdown.total_amount || 0,
+          purchaseInvoice:data.purchaseInvoices
         });
         setLoading(false);
-        // Process expense data
 
-        const processedExpenseData = (
-          response.data.formattedExpenseBreakdown || []
-        )
-          .map((item) => ({
-            name:
-              item.payment_type.charAt(0).toUpperCase() +
-              item.payment_type.slice(1),
-            value: parseFloat(item.value || 0),
-          }))
-          .filter((item) => item.value > 0)
-          .sort((a, b) => b.value - a.value); // Sort by value descending
+        console.log("Dashboard data:", data);
+        // Process expense line data
+        const processedExpenseLineData = (
+          data.daybookDebitTransactions || []
+        ).map((item) => ({
+          name: item.party_type,
+          amount: parseFloat(item.total_amount || 0),
+          transaction_count: item.transaction_count || 0,
+          date: new Date().toLocaleDateString(),
+        }));
 
-        setIsFilteredDataLoading(false);
-      } catch (error) {
-        console.error("Error fetching filtered data:", error);
-        setError(
-          error.response?.data?.message || "Failed to fetch filtered data"
-        );
-        setIsFilteredDataLoading(false);
-      }
-    };
+        setExpenseLineData(processedExpenseLineData);
 
-    fetchFilteredData();
-  }, [selectedExpenseMonth, selectedExpenseYear, revenueTimeframe]);
-
-  useEffect(() => {
-    const fetchFilteredData = async () => {
-      try {
-        setIsFilteredDataLoading(true);
-        const token = localStorage.getItem("token");
-
-        const response = await axios.get(
-          `${config.API_BASE_URL}/dashboard/filtered-data`,
-          {
-            params: {
-              month: selectedExpenseMonth,
-              year: selectedExpenseYear,
-              timeframe: revenueTimeframe,
-            },
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.data.status === "success") {
-          setFilteredExpenseData(response.data.data.expenses);
-          setFilteredRevenueData(response.data.data.revenue);
-        }
+        // Process filtered expense and revenue data
+        setFilteredExpenseData(transformedExpenseBreakdown);
+        setFilteredRevenueData(data.monthlyRevenue || []);
 
         setIsFilteredDataLoading(false);
       } catch (error) {
@@ -226,13 +207,34 @@ function Dashboard() {
     fetchPurchaseDistribution();
   }, [startDate, endDate]);
 
-  const expenseLineData = dashboardData.expenseBreakdown.map((item) => ({
-    name:
-      item.payment_type.charAt(0).toUpperCase() + item.payment_type.slice(1),
-    amount: parseFloat(item.value),
-    date: new Date(item.payment_date).toLocaleDateString(),
-  }));
+  const processedRevenueData = useMemo(() => {
+    return (dashboardData.monthlyRevenue || []).map((item) => ({
+      ...item,
+      revenue: parseFloat(item.revenue || 0),
+    }));
+  }, [dashboardData.monthlyRevenue]);
 
+  const processedExpenseData = useMemo(() => {
+    return (dashboardData.daybookDebitTransactions || []).map((item) => ({
+      ...item,
+      total_amount: parseFloat(item.total_amount || 0),
+    }));
+  }, [dashboardData.daybookDebitTransactions]);
+
+  // Render methods with improved error handling
+  if (loading) return <LoadingSpinner />;
+
+  if (error)
+    return (
+      <ErrorDisplay
+        message={error}
+        onRetry={() => {
+          setError(null);
+          // Trigger data refetch
+          fetchDashboardData();
+        }}
+      />
+    );
   // Custom Tooltip for Expense Line Chart
   const ExpenseLineTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -247,6 +249,60 @@ function Dashboard() {
     }
     return null;
   };
+
+  const ErrorDisplay = ({ message, onRetry }) => (
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-6">
+      <svg
+        className="w-24 h-24 text-red-500 mb-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">
+        Oops! Something Went Wrong
+      </h2>
+      <p className="text-gray-600 mb-6 text-center max-w-md">{message}</p>
+      <button
+        onClick={onRetry}
+        className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 flex items-center"
+      >
+        <RefreshIcon className="mr-2" />
+        Retry
+      </button>
+    </div>
+  );
+
+  const DateRangePicker = ({ startDate, endDate, onChange }) => (
+    <div className="flex items-center space-x-4">
+      <div>
+        <label className="block text-sm text-neutral-600 mb-1">
+          Start Date
+        </label>
+        <input
+          type="date"
+          value={startDate.toISOString().split("T")[0]}
+          onChange={(e) => onChange("start", new Date(e.target.value))}
+          className="border rounded-md px-3 py-2 text-sm w-full focus:ring-2 focus:ring-primary"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-neutral-600 mb-1">End Date</label>
+        <input
+          type="date"
+          value={endDate.toISOString().split("T")[0]}
+          onChange={(e) => onChange("end", new Date(e.target.value))}
+          className="border rounded-md px-3 py-2 text-sm w-full focus:ring-2 focus:ring-primary"
+        />
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -274,9 +330,8 @@ function Dashboard() {
     );
   }
 
-
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-6 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
@@ -322,7 +377,9 @@ function Dashboard() {
               <div>
                 <h2 className="text-gray-500 text-sm mb-2">Total Expenses</h2>
                 <p className="text-2xl font-bold text-orange-600">
-                  ₹{dashboardData.total_expense?.toLocaleString() || "0"}
+                  ₹
+                  {dashboardData.dayBookDebitTotalAmount?.toLocaleString() ||
+                    "0"}
                 </p>
               </div>
               <FaMoneyBillWave className="text-orange-400 text-3xl" />
@@ -412,7 +469,7 @@ function Dashboard() {
               </div>
             </div>
             {isFilteredDataLoading ? (
-              <div className="flex items-center justify-center h-[300px]">
+              <div className="flex items-center justify-center h-[300px] ">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
               </div>
             ) : (
@@ -461,64 +518,52 @@ function Dashboard() {
           </div>
 
           {/* Expense Breakdown Chart */}
-          <div className="bg-white p-5 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-700">
-                Expense Breakdown
-              </h2>
-              <div className="flex gap-2">
-                <select
-                  className="border rounded-md px-3 py-1 text-sm"
-                  value={selectedExpenseMonth}
-                  onChange={(e) =>
-                    setSelectedExpenseMonth(parseInt(e.target.value))
-                  }
-                >
-                  {MONTH_NAMES.map((month, index) => (
-                    <option key={index} value={index}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="border rounded-md px-3 py-1 text-sm"
-                  value={selectedExpenseYear}
-                  onChange={(e) =>
-                    setSelectedExpenseYear(parseInt(e.target.value))
-                  }
-                >
-                  {[...Array(5)].map((_, i) => {
-                    const year = new Date().getFullYear() - i;
-                    return (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+          {isFilteredDataLoading ? (
+            <div className="flex items-center justify-center h-[300px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
             </div>
-            {isFilteredDataLoading ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
+          ) : dashboardData.daybookDebitTransactions.length > 0 ? (
+            <div className="bg-white p-5 rounded-lg shadow-md">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-700">
+                  Expense Breakdown
+                </h2>
+                <div className="flex gap-2">
+                  <select
+                    className="border rounded-md px-3 py-1 text-sm"
+                    value={selectedExpenseYear}
+                    onChange={(e) =>
+                      setSelectedExpenseYear(parseInt(e.target.value))
+                    }
+                  >
+                    {[...Array(5)].map((_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
               </div>
-            ) : filteredExpenseData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={filteredExpenseData}
+                    data={processedExpenseData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
                     outerRadius={100}
                     fill="#8884d8"
                     paddingAngle={5}
-                    dataKey="value"
+                    dataKey="total_amount"
+                    nameKey="party_type"
                   >
-                    {filteredExpenseData.map((entry, index) => (
+                    {processedExpenseData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
                       />
                     ))}
                     <Label
@@ -532,11 +577,20 @@ function Dashboard() {
                           dominantBaseline="central"
                           fontSize={14}
                         >
-                          Total Expenses
-                          <tspan x={cx} y={cy + 20}>
+                          Total Debit
+                          <tspan
+                            x={cx}
+                            y={cy + 20}
+                            fontSize={16}
+                            fontWeight="bold"
+                          >
                             ₹
-                            {filteredExpenseData
-                              .reduce((sum, item) => sum + item.value, 0)
+                            {processedExpenseData
+                              .reduce(
+                                (sum, item) =>
+                                  sum + parseFloat(item.total_amount || 0),
+                                0
+                              )
                               .toLocaleString()}
                           </tspan>
                         </text>
@@ -544,10 +598,25 @@ function Dashboard() {
                     />
                   </Pie>
                   <Tooltip
-                    formatter={(value) => [
-                      `₹${value.toLocaleString()}`,
-                      "Amount",
-                    ]}
+                    formatter={(value, name, props) => {
+                      const item = processedExpenseData.find(
+                        (d) => d.party_type === name
+                      );
+                      const total = processedExpenseData.reduce(
+                        (sum, item) => sum + parseFloat(item.total_amount || 0),
+                        0
+                      );
+                      const percentage = (
+                        (parseFloat(value || 0) / total) *
+                        100
+                      ).toFixed(1);
+                      return [
+                        `₹${parseFloat(value).toLocaleString()}`,
+                        `${name} (${percentage}%) - ${
+                          item.transaction_count?.toLocaleString() || 0
+                        } transactions`,
+                      ];
+                    }}
                     contentStyle={{
                       backgroundColor: "white",
                       border: "1px solid #e5e7eb",
@@ -561,12 +630,12 @@ function Dashboard() {
                     verticalAlign="middle"
                     formatter={(value, entry) => {
                       const { payload } = entry;
-                      const total = filteredExpenseData.reduce(
-                        (sum, item) => sum + item.value,
+                      const total = processedExpenseData.reduce(
+                        (sum, item) => sum + parseFloat(item.total_amount || 0),
                         0
                       );
                       const percentage = (
-                        (payload.value / total) *
+                        (parseFloat(payload.total_amount || 0) / total) *
                         100
                       ).toFixed(1);
                       return `${value} (${percentage}%)`;
@@ -574,12 +643,12 @@ function Dashboard() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
-                No expense data available for this period
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-white p-5 rounded-lg shadow-md flex items-center justify-center h-[300px] text-gray-500">
+              No debit transaction data available for this period
+            </div>
+          )}
         </div>
 
         {/* Expense Line Chart Section */}
@@ -604,13 +673,17 @@ function Dashboard() {
                 tickFormatter={(value) => `₹${value.toLocaleString()}`}
               />
               <Tooltip
-                content={<ExpenseLineTooltip />}
+                formatter={(value, name) => [
+                  `₹${value.toLocaleString()}`,
+                  `${name} Expenses`,
+                ]}
                 cursor={{ stroke: "#d1d5db", strokeWidth: 1 }}
               />
               <Legend
                 layout="horizontal"
                 verticalAlign="bottom"
                 align="center"
+                formatter={(value) => `${value} Expenses`}
               />
               <Line
                 type="monotone"

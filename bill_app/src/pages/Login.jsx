@@ -47,7 +47,7 @@ const Login = () => {
           navigate("/clients");
           break;
         default:
-          navigate("/");
+          navigate("/dashboard");
       }
     } catch (error) {
       // Handle login error
