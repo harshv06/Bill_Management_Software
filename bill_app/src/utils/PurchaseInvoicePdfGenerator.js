@@ -34,11 +34,11 @@ export const generatePurchaseInvoicePDF = (invoice) => {
   const tableRows = invoice.items.map((item) => [
     item.description,
     item.quantity,
-    `₹${Number(item.rate).toFixed(2)}`,
+    `${Number(item.rate).toFixed(2)}`,
     `${item.gst_rate}%`,
-    `₹${Number(item.amount).toFixed(2)}`,
-    `₹${Number(item.gst_amount).toFixed(2)}`,
-    `₹${Number(invoice.total_amount).toFixed(2)}`,
+    `${Number(item.amount).toFixed(2)}`,
+    `${Number(item.gst_amount).toFixed(2)}`,
+    `${Number(invoice.total_amount).toFixed(2)}`,
   ]);
 
   doc.autoTable({
@@ -53,12 +53,12 @@ export const generatePurchaseInvoicePDF = (invoice) => {
         "",
         "",
         "",
-        `₹${Number(invoice.subtotal).toFixed(2)}`,
-        `₹${Number(invoice.total_gst).toFixed(2)}`,
-        `₹${Number(invoice.total_amount).toFixed(2)}`,
+        `${Number(invoice.subtotal).toFixed(2)}`,
+        `${Number(invoice.total_gst).toFixed(2)}`,
+        `${Number(invoice.total_amount).toFixed(2)}`,
       ],
     ],
-    footStyles: { fillColor: [241, 245, 249] },
+    footStyles: { fillColor: [34,67,45] },
   });
 
   // Add terms and conditions

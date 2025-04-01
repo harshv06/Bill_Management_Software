@@ -8,6 +8,7 @@ import AssignCarToCompanyModal from "../components/Modals/CarModals/AssignCarToC
 import ConfirmationModal from "../components/Modals/ConfirmationModal";
 import Config from "../utils/GlobalConfig";
 import EditAdvancePaymentModal from "../components/Modals/EditModals/EditAdvancePaymentModal";
+import TransactionSyncService from "../utils/TransactionSyncService";
 
 const CarDetails = () => {
   const location = useLocation();
@@ -108,7 +109,7 @@ const CarDetails = () => {
         console.error("Invalid payment ID");
         return;
       }
-
+      console.log(paymentId);
       // Perform delete request
       const response = await fetch(
         `${Config.API_BASE_URL}/cars/payments/delete/${paymentId}`,
@@ -120,6 +121,8 @@ const CarDetails = () => {
         }
       );
 
+      const response2= await TransactionSyncService.deleteDaybookTransactionFromCarPayment(paymentId);
+      console.log(response2)
       // Check response status
       if (!response.ok) {
         const errorData = await response.json();

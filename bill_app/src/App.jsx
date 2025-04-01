@@ -31,6 +31,10 @@ import PrivateRoute from "../src/privateRoutes";
 import { PERMISSIONS } from "./config/permissions";
 import Sidebar from "./components/Sidebar";
 import DayBookPage from "./pages/DayBookPage";
+import BankReconciliationPage from "./pages/BankReconciliationPage";
+import BalanceSheetPage from "./pages/BalanceSheet";
+import ProfitAndLossPage from "./pages/ProfitAndLossPages";
+import CreateUserPage from "./pages/CreateUserPage";
 
 // Unauthorized Access Component
 const UnauthorizedAccess = () => {
@@ -90,7 +94,7 @@ const UnauthorizedAccess = () => {
             </button>
 
             <button
-              onClick={() => window.location.reload()}
+              // onClick={() => window.location.reload()}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-md transition duration-300 ease-in-out flex items-center"
             >
               <svg
@@ -123,7 +127,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/d" element={<Dashboard />} />
+            {/* <Route path="/d" element={<Dashboard />} /> */}
 
             {/* Protected Routes with RBAC */}
             <Route
@@ -142,7 +146,7 @@ function App() {
               path="/purchase-invoices"
               element={
                 <PrivateRoute
-                  requiredPermission={[PERMISSIONS.COMPANIES.VIEW]}
+                  requiredPermission={[PERMISSIONS.PURCHASE_INVOICES.VIEW]}
                   fallback={<UnauthorizedAccess />}
                 >
                   <PurchaseInvoices />
@@ -153,7 +157,7 @@ function App() {
               path="/purchase-invoices/new"
               element={
                 <PrivateRoute
-                  requiredPermission={[PERMISSIONS.COMPANIES.VIEW]}
+                  requiredPermission={[PERMISSIONS.PURCHASE_INVOICES.CREATE]}
                   fallback={<UnauthorizedAccess />}
                 >
                   <NewPurchaseInvoice />
@@ -213,7 +217,7 @@ function App() {
               path="/invoices"
               element={
                 <PrivateRoute
-                  requiredPermission={[PERMISSIONS.PAYMENTS.VIEW]}
+                  requiredPermission={[PERMISSIONS.SALES_INVOICES.VIEW]}
                   fallback={<UnauthorizedAccess />}
                 >
                   <Invoices />
@@ -224,7 +228,7 @@ function App() {
               path="/DayBookPage"
               element={
                 <PrivateRoute
-                  requiredPermission={[PERMISSIONS.PAYMENTS.VIEW]}
+                  requiredPermission={[PERMISSIONS.DAYBOOK.VIEW]}
                   fallback={<UnauthorizedAccess />}
                 >
                   <DayBookPage />
@@ -233,13 +237,61 @@ function App() {
             />
 
             <Route
+              path="/bank-reconciliation"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.BANK_RECONCILIATION.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <BankReconciliationPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
               path="/reports"
               element={
                 <PrivateRoute
-                  requiredPermission={[PERMISSIONS.COMPANIES.VIEW]}
+                  requiredPermission={[PERMISSIONS.REPORTS.VIEW]}
                   fallback={<UnauthorizedAccess />}
                 >
                   <Reports />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/profit-and-loss"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.FINANCIAL_REPORTS.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <ProfitAndLossPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/balance-sheet"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.FINANCIAL_REPORTS.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <BalanceSheetPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/role-management"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.ROLE_MANAGEMENT.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <CreateUserPage />
                 </PrivateRoute>
               }
             />

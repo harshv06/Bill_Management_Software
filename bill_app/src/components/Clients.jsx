@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import AddCompanyModal from "./Modals/AddCompanyModal";
 import EditCompanyModal from "./Modals/EditCompanyModal";
 import Config from "../utils/GlobalConfig.js";
+import { useAuth } from "../context/authContext";
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const Clients = () => {
     isOpen: false,
     company: null,
   });
+  const { user } = useAuth();
 
   useEffect(() => {
     dispatch(
@@ -29,7 +31,7 @@ const Clients = () => {
   }, [currentPage, dispatch]);
 
   const handleAdd = async (companyData) => {
-    console.log("Company Data:",companyData);
+    console.log("Company Data:", companyData);
     try {
       const response = await fetch(`${Config.API_BASE_URL}/addCompany`, {
         method: "POST",
@@ -42,7 +44,7 @@ const Clients = () => {
       if (!response.ok) {
         throw new Error("Failed to add company");
       }
-      console.log(response)
+      console.log(response);
       dispatch(fetchCompanyData());
       setIsAddModalOpen(false);
     } catch (error) {
@@ -113,12 +115,14 @@ const Clients = () => {
               View and manage your client companies
             </p>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Add New Client
-          </button>
+          {user.permissions.includes("companies:create") && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Add New Client
+            </button>
+          )}
         </div>
 
         {/* List container */}

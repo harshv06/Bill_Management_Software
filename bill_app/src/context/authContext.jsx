@@ -24,14 +24,40 @@ export const AuthProvider = ({ children }) => {
         email,
         password,
       });
-      console.log(response);
+      console.log("Logged In: ", response);
+
+      // Parse permissions
+      let userPermissions = [];
+      try {
+        // Check if permissions are a string (JSON)
+        if (typeof response.data.user.user.permissions === "string") {
+          console.log("If Block");
+          userPermissions = JSON.parse(response.data.user.user.permissions);
+        }
+        // If it's already an array, use it directly
+        else if (Array.isArray(response.data.user.user.permissions)) {
+          userPermissions = response.data.user.user.permissions;
+          console.log("If Else User Permissions:", userPermissions);
+        }
+        // Fallback to role-based permissions
+        else {
+          userPermissions =
+            ROLE_PERMISSIONS[response.data.user.user.role] || [];
+          console.log("ELSE Block", response.data.user.user.permissions);
+        }
+      } catch (parseError) {
+        console.error("Error parsing permissions:", parseError);
+        userPermissions = ROLE_PERMISSIONS[response.data.user.user.role] || [];
+      }
+
       // Store token
       localStorage.setItem("token", response.data.user.token);
 
-      // Set user with permissions
+      console.log("Final Permissions:", userPermissions);
+      // Set user with parsed permissions
       setUser({
         ...response.data.user.user,
-        permissions: ROLE_PERMISSIONS[response.data.user.user.role] || [],
+        permissions: userPermissions,
       });
       console.log(user);
       setIsAuthenticated(true);
@@ -45,19 +71,22 @@ export const AuthProvider = ({ children }) => {
 
   const Register = async (name, email, password) => {
     try {
-      console.log({username:name,email,password})
+      console.log({ username: name, email, password });
       const response = await axios.post(`${config.API_BASE_URL}/signup`, {
-        username:name,
+        username: name,
         email,
         password,
       });
-      
+
       if (response.data) {
         console.log("Registration successful:", response.data);
         return response.data;
       }
     } catch (error) {
-      console.error("Registration error:", error.response?.data || error.message);
+      console.error(
+        "Registration error:",
+        error.response?.data || error.message
+      );
       throw error; // Rethrow the error to handle it in the component
     }
   };

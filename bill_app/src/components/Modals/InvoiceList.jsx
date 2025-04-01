@@ -15,6 +15,7 @@ const InvoiceList = ({ companyId }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [deletingInvoice, setDeletingInvoice] = useState(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -79,28 +80,70 @@ const InvoiceList = ({ companyId }) => {
     }
   };
 
-  const handleDeleteInvoice = async (invoiceId) => {
+  const handleDeleteInvoice = async (invoice) => {
     try {
       const token = localStorage.getItem("token");
+
       // Confirm deletion
       const confirmDelete = window.confirm(
-        "Are you sure you want to delete this invoice?"
+        `Are you sure you want to delete invoice ${invoice.invoice_number}?`
       );
 
       if (!confirmDelete) return;
 
-      await axios.delete(`${Config.API_BASE_URL}/invoices/${invoiceId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Set the invoice being deleted
+      setDeletingInvoice(invoice);
+
+      // Fetch daybook transactions
+      const daybookResponse = await axios.get(
+        `${Config.API_BASE_URL}/daybook/transactions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Find matching transaction
+      const matchingTransaction = daybookResponse.data.data.find(
+        (transaction) =>
+          transaction.reference_number === invoice.invoice_number.toString()
+      );
+
+      // Delete invoice
+      await axios.delete(
+        `${Config.API_BASE_URL}/invoices/${invoice.invoice_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Delete matching daybook transaction if found
+      if (matchingTransaction) {
+        await axios.delete(
+          `${Config.API_BASE_URL}/daybook/transactions/${matchingTransaction.transaction_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
 
       // Refresh invoices
       fetchInvoices();
-      toast.success("Invoice deleted successfully");
+
+      toast.success(
+        "Invoice and related daybook transaction deleted successfully"
+      );
     } catch (error) {
       console.error("Failed to delete invoice", error);
       toast.error("Failed to delete invoice");
+    } finally {
+      // Reset deleting invoice state
+      setDeletingInvoice(null);
     }
   };
 
@@ -287,7 +330,7 @@ const InvoiceList = ({ companyId }) => {
                     <td className="px-4 py-3 flex space-x-2">
                       <select
                         value={invoice.status}
-                        disabled={invoice.status === 'paid'} // Disable if already paid
+                        disabled={invoice.status === "paid"} // Disable if already paid
                         onChange={(e) =>
                           handleStatusUpdate(invoice.invoice_id, e.target.value)
                         }
@@ -299,8 +342,8 @@ const InvoiceList = ({ companyId }) => {
                         <option value="cancelled">Cancelled</option>
                       </select>
                       <button
-                        onClick={() => handleDeleteInvoice(invoice.invoice_id)}
-                        disabled={invoice.status === 'paid'} // Disable if already paid
+                        onClick={() => handleDeleteInvoice(invoice)}
+                        disabled={invoice.status === "paid"} // Disable if already paid
                         className="text-red-500 hover:text-red-700"
                         title="Delete Invoice"
                       >
