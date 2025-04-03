@@ -19,7 +19,7 @@ import FilterSection from "../components/DayBook/FilterSection";
 import TransactionSyncService from "../utils/TransactionSyncService"; // Import the sync service
 import { toast } from "react-hot-toast";
 import BankAccountService from "../utils/BankAccountService";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/authContext.jsx";
 import config from "../utils/GlobalConfig";
 
 const DayBookPage = () => {
