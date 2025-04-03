@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 import Config from "../utils/GlobalConfig";
 import GenerateInvoiceModal from "./Modals/InvoiceModals/GenerateInvoiceModal";
 import InvoiceDetailsModal from "./Modals/InvoiceModals/ViewInvoiceDetailsModal";
-import { useAuth } from "@/context/authContext";
+import { useAuth } from "@/context/authContext.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import logoImage from "../assets/letterhead Matoshree.png";
