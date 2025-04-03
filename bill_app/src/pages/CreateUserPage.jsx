@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { ROLE_PERMISSIONS, PERMISSIONS } from "../config/permissions";
 import Sidebar from "../components/Sidebar";
-import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes,FaDatabase,FaCloudUploadAlt } from "react-icons/fa";
 import config from "../utils/GlobalConfig";
 
 const CreateUserPage = () => {
@@ -15,7 +15,7 @@ const CreateUserPage = () => {
     is_active: true,
     permissions: [],
   });
-
+  const [backupFile, setBackupFile] = useState(null);
   const [users, setUsers] = useState([]);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -183,6 +183,123 @@ const CreateUserPage = () => {
       </div>
     );
   };
+
+  const handleBackupDatabase = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${config.API_BASE_URL}/full-backup-database/main`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:\.]/g, "-");
+      const filename = `database_backup_${timestamp}.sql`;
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Database backup created successfully");
+    } catch (error) {
+      console.error("Backup failed:", error);
+      toast.error("Failed to create database backup");
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setBackupFile(file);
+  };
+
+  const handleRestoreDatabase = async () => {
+    if (!backupFile) {
+      toast.error("Please select a backup file");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("backup", backupFile);
+
+      const response = await axios.post(
+        `${config.API_BASE_URL}/restore-database`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      toast.success("Database restored successfully");
+
+      // Reset file input
+      setBackupFile(null);
+      if (document.getElementById("backup-file-input")) {
+        document.getElementById("backup-file-input").value = "";
+      }
+    } catch (error) {
+      console.error("Restore failed:", error);
+      toast.error("Failed to restore database");
+    }
+  };
+
+  const DatabaseBackupSection = () => (
+    <div className="bg-white shadow-md rounded-lg p-6 mt-6">
+      <h2 className="text-xl font-semibold mb-4">Database Management</h2>
+      <div className="flex space-x-4">
+        <div className="flex-1">
+          <button
+            onClick={handleBackupDatabase}
+            className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 flex items-center justify-center"
+          >
+            <FaDatabase className="mr-2" /> Create Database Backup
+          </button>
+        </div>
+        <div className="flex-1">
+          <input
+            type="file"
+            id="backup-file-input"
+            onChange={handleFileChange}
+            accept=".sql"
+            className="hidden"
+          />
+          <label
+            htmlFor="backup-file-input"
+            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 flex items-center justify-center cursor-pointer"
+          >
+            <FaCloudUploadAlt className="mr-2" />
+            {backupFile ? backupFile.name : "Select Backup File"}
+          </label>
+        </div>
+        <div className="flex-1">
+          <button
+            onClick={handleRestoreDatabase}
+            disabled={!backupFile}
+            className="w-full bg-purple-500 text-white py-2 rounded-md hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center"
+          >
+            <FaDatabase className="mr-2" /> Restore Database
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -417,6 +534,8 @@ const CreateUserPage = () => {
             </div>
           </div>
         )}
+
+<DatabaseBackupSection />
       </div>
     </div>
   );

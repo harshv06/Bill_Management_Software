@@ -4,4 +4,10 @@ module.exports = {
     extend: {},
   },
   plugins: [],
+  compilerOptions: {
+    baseUrl: ".",
+    paths: {
+      "@/*": ["./src/*"],
+    },
+  },
 };
