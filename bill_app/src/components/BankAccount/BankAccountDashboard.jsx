@@ -11,7 +11,7 @@ import BankTransactionModal from "../BankAccount/BankTransaction";
 import BankAccountService from "../../utils/BankAccountService";
 import toast from "react-hot-toast";
 import BankAccountTransactions from "./BankAccountTransaction";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from '@/context/AuthContext';
 const BankAccountDashboard = () => {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(null);
