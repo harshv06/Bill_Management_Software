@@ -5,7 +5,7 @@ import EditCarModal from "./Modals/EditCarModal";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFleetData } from "../../store/FleetDataSlice";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "@/context/authContext";
 import { PERMISSIONS } from "../config/permissions";
 import config from "../utils/GlobalConfig";
 import SalaryCalculationModal from "./Modals/SalaryModal/SalaryCalculationModal";

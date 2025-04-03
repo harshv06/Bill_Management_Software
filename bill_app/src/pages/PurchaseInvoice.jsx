@@ -5,7 +5,7 @@ import config from "../utils/GlobalConfig";
 import Sidebar from "../components/Sidebar";
 import InvoiceDetailsModal from "../components/Modals/InvoiceModals/PurchaseInvoiceDetailsModal";
 import { generatePurchaseInvoicePDF } from "../utils/PurchaseInvoicePdfGenerator";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "@/context/authContext";
 
 const PurchaseInvoices = () => {
   const [invoices, setInvoices] = useState([]);
