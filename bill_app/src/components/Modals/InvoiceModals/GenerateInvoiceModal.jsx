@@ -23,35 +23,140 @@ const GenerateInvoiceModal = ({
   const [products, setProducts] = useState([
     { description: "", hsn: "", quantity: 1, rate: "", amount: "" },
   ]);
+  const [customNumber, setCustomNumber] = useState('');
+  const [companyDetails, setCompanyProfile] = useState(null);
+  useEffect(() => {
+    const fetchCompanyProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${Config.API_BASE_URL}/company-profile/get`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-  const [invoiceDetails, setInvoiceDetails] = useState({
-    billNumber: `INV-${new Date().getFullYear()}-${Math.floor(
-      Math.random() * 10000
-    )}`,
-    billDate: new Date().toLocaleDateString(),
-    companyDetails: {
-      name: "MATOSHREE FLEET SOLUTIONS PRIVATE \nLIMITED",
-      address:
-        "Office No. 201, 2nd Floor,\nSai Corporate Park, Near Pune-Solapur Highway,\nHadapsar, Pune - 411028",
-      contact: "+91 9876543210",
-      email: "info@matoshreesolutions.com",
-      pan: "AAQCM3825L",
-      gst: "27AAQCM3825L1ZW",
-      stateCode: "27",
-      date: new Date().toLocaleDateString(),
-    },
-    customerDetails: {
-      company_id: companyId || "", // Use passed companyId
-      name: "",
-      address: "",
-      gst: "",
-      stateCode: "27",
-    },
+        if (response.data.status === "success") {
+          const profile = response.data.data;
+          setCompanyProfile(profile);
+          console.log("Company Profile:", profile);
+          // Update invoice details with company profile
+          setInvoiceDetails((prev) => ({
+            ...prev,
+            companyDetails: {
+              name: profile?.company_name,
+              address: `${profile?.address_line1}\n${
+                profile?.address_line2 || ""
+              }\n${profile?.city}, ${profile?.state} - ${profile?.pincode}`,
+              contact: profile?.contact_number,
+              email: profile?.email,
+              pan: profile?.pan_number,
+              gst: profile?.gst_number,
+              stateCode: profile?.state_code,
+              date: new Date().toLocaleDateString(),
+              bankDetails: {
+                name: profile?.bank_name,
+                accountNo: profile?.bank_account_number,
+                ifscCode: profile?.ifsc_code,
+              },
+              hsn_code: profile?.hsn,
+              service_category: profile?.service_category,
+              nature_of_transaction: profile?.nature_of_transaction,
+
+            },
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching company profile:", error);
+        toast.error("Failed to fetch company profile");
+      }
+    };
+
+    fetchCompanyProfile();
+  }, []);
+
+  const [invoiceDetails, setInvoiceDetails] = useState(() => {
+    // Get company profile from localStorage
+    const savedProfile = localStorage.getItem("companyProfile");
+    const companyProfile = savedProfile ? JSON.parse(savedProfile) : null;
+    console.log("Company Profile:", companyProfile);
+    return {
+      billNumber: `INV-${new Date().getFullYear()}-${Math.floor(
+        Math.random() * 10000
+      )}`,
+      billDate: new Date().toISOString().split("T")[0],
+      companyDetails: companyProfile
+        ? {
+            name: companyProfile.company_name,
+            address: `${companyProfile.address_line1}\n${companyProfile.address_line2}\n${companyProfile.area}, ${companyProfile.city} - ${companyProfile.pincode}`,
+            contact: companyProfile.contact_number,
+            email: companyProfile.email,
+            pan: companyProfile.pan_number,
+            gst: companyProfile.gst_number,
+            stateCode: companyProfile.state_code,
+            date: new Date().toLocaleDateString(),
+            bankDetails: {
+              name: companyProfile.bank_name,
+              accountNo: companyProfile.bank_account_number,
+              ifscCode: companyProfile.ifsc_code,
+            },
+            hsn_code: companyProfile.hsn_code,
+            service_category: companyProfile.service_category,
+            transaction_category: companyProfile.transaction_category,
+          }
+        : {
+            // Default values if no profile exists
+            name: "MATOSHREE FLEET SOLUTIONS PRIVATE \nLIMITED",
+            address:
+              "Office No. 201, 2nd Floor,\nSai Corporate Park, Near Pune-Solapur Highway,\nHadapsar, Pune - 411028",
+            contact: "+91 9876543210",
+            email: "info@matoshreesolutions.com",
+            pan: "AAQCM3825L",
+            gst: "27AAQCM3825L1ZW",
+            stateCode: "27",
+            date: new Date().toLocaleDateString(),
+          },
+      customerDetails: {
+        company_id: companyId || "",
+        name: "",
+        address: "",
+        gst: "",
+        stateCode: "27",
+      },
+    };
   });
 
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("companyProfile");
+    if (savedProfile) {
+      const companyProfile = JSON.parse(savedProfile);
+      setInvoiceDetails((prev) => ({
+        ...prev,
+        companyDetails: {
+          name: companyProfile.company_name,
+          address: `${companyProfile.address_line1}\n${companyProfile.address_line2}\n${companyProfile.area}, ${companyProfile.city} - ${companyProfile.pincode}`,
+          contact: companyProfile.contact_number,
+          email: companyProfile.email,
+          pan: companyProfile.pan_number,
+          gst: companyProfile.gst_number,
+          stateCode: companyProfile.state_code,
+          date: new Date().toLocaleDateString(),
+          bankDetails: {
+            name: companyProfile.bank_name,
+            accountNo: companyProfile.bank_account_number,
+            ifscCode: companyProfile.ifsc_code,
+          },
+          hsn_code: companyProfile.hsn_code,
+          service_category: companyProfile.service_category,
+          transaction_category: companyProfile.transaction_category,
+        },
+      }));
+    }
+  }, []);
+
   const [gstRates, setGstRates] = useState({
-    sgst: 2.5,
-    cgst: 2.5,
+    sgst: 0,
+    cgst: 0,
     igst: 5,
     useIGST: false, // Toggle between SGST+CGST and IGST
   });
@@ -160,9 +265,10 @@ const GenerateInvoiceModal = ({
         igst_amount: gstAmount.igst,
         grand_total: grandTotal,
         status: "pending",
-        invoice_date: new Date(),
+        invoice_date: new Date(invoiceDetails.billDate),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         customer_details: JSON.stringify(invoiceDetails.customerDetails),
+        company_details: JSON.stringify(invoiceDetails.companyDetails), // Add company details
         items: products,
       };
 
@@ -179,19 +285,22 @@ const GenerateInvoiceModal = ({
         }
       );
 
+      console.log(new Date(invoiceDetails.billDate));
+
       const DayBookData = {
         account_head: "Income",
         amount: response.data.data.invoice.grand_total,
         bank_account_id: null,
-        bank_name: null,
-        bank_account_number: null,
-        bank_ifsc_code: null,
+        bank_name: invoiceDetails.companyDetails.bankDetails?.name || null,
+        bank_account_number:
+          invoiceDetails.companyDetails.bankDetails?.accountNo || null,
+        bank_ifsc_code:
+          invoiceDetails.companyDetails.bankDetails?.ifscCode || null,
         car_id: null,
         category: "PAYMENTS",
         company_id: response.data.data.invoice.company_id,
         description: `Invoice created for ${response.data.data.invoice.customer_name}`,
-        gst_applicable:
-          response.data.data.invoice.sgst_amount > 0 ? true : false,
+        gst_applicable: response.data.data.invoice.sgst_amount > 0,
         party_name: response.data.data.invoice.customer_name,
         party_type: "Customer",
         payment_method: "cash",
@@ -268,7 +377,9 @@ const GenerateInvoiceModal = ({
     img.src = logoImage;
   }, []);
 
+
   const generatePDF = async () => {
+    console.log("Generating PDF...:", invoiceDetails);
     // Number formatting function
     const formatNumber = (num, digits = 2) => {
       return num.toLocaleString("en-IN", {
@@ -497,9 +608,10 @@ const GenerateInvoiceModal = ({
         invoiceDetails.customerDetails.name,
         invoiceDetails.customerDetails.address,
         {
-          "GST No": invoiceDetails.customerDetails.gst || "N/A",
+          "GSTIN": invoiceDetails.customerDetails.gst || "N/A",
           "PAN No": invoiceDetails.customerDetails.pan || "N/A",
-          "State Code": invoiceDetails.companyDetails.stateCode || "27",
+          "STATE": "MAHARASHTRA",
+          "CODE": "27"
         }
       );
 
@@ -511,7 +623,14 @@ const GenerateInvoiceModal = ({
         invoiceDetails.companyDetails.name,
         invoiceDetails.companyDetails.address,
         {
-          "Invoice Date": invoiceDetails.companyDetails.date || "N/A",
+          "Invoice Date": new Date(invoiceDetails.billDate).toLocaleDateString(
+            "en-IN",
+            {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }
+          ),
           "Invoice No": invoiceDetails.billNumber,
         }
       );
@@ -655,16 +774,31 @@ const GenerateInvoiceModal = ({
       // Bottom Details Section
       const bottomDetails = [
         { label: "PAN No", value: invoiceDetails.companyDetails.pan },
+        { label: "GST No", value: invoiceDetails.companyDetails.gst },
         {
-          label: "Provisional GST No",
-          value: "27AAQCM3825L1ZW",
+          label: "HSN/SAC Code",
+          value: invoiceDetails.companyDetails.hsn_code,
         },
-        { label: "HSN/SAC Code", value: "996412" },
-        { label: "Nature of Transaction", value: "BUSINESS TO BUSINESS" },
-        { label: "Service Category", value: "EMPLOYEE TRANSPORTATION" },
-        { label: "Bank Name & Branch", value: "AMANORA PUNE MH 411028" },
-        { label: "Account No", value: "2221262245805293" },
-        { label: "IFSC Code", value: "AUBL0002622" },
+        {
+          label: "Nature of Transaction",
+          value: invoiceDetails.companyDetails.nature_of_transaction,
+        },
+        {
+          label: "Service Category",
+          value: invoiceDetails.companyDetails.service_category,
+        },
+        {
+          label: "Bank Name & Branch",
+          value: invoiceDetails.companyDetails.bankDetails?.name,
+        },
+        {
+          label: "Account No",
+          value: invoiceDetails.companyDetails.bankDetails?.accountNo,
+        },
+        {
+          label: "IFSC Code",
+          value: invoiceDetails.companyDetails.bankDetails?.ifscCode,
+        },
       ];
 
       // Render Bottom Details
@@ -792,7 +926,6 @@ const GenerateInvoiceModal = ({
               <label className="block mb-2 text-sm font-medium text-gray-700">
                 Select Company
               </label>
-
               <CompanySearch
                 companies={companies}
                 onSelectCompany={handleCompanySelect}
@@ -800,6 +933,24 @@ const GenerateInvoiceModal = ({
                   setIsOtherCompany(true);
                   setIsAddCompanyModalOpen(true);
                 }}
+              />
+            </div>
+
+            {/* Add date field */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Invoice Date
+              </label>
+              <input
+                type="date"
+                value={invoiceDetails.billDate}
+                onChange={(e) =>
+                  setInvoiceDetails((prev) => ({
+                    ...prev,
+                    billDate: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
