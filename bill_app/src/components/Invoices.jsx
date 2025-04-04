@@ -9,6 +9,7 @@ import { useAuth } from "@/context/authContext.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import logoImage from "../assets/letterhead Matoshree.png";
+import SearchBar from "./SearchBar/InvoiceSearchBar";
 // import { FaPlus, FaEye, FaDownload, FaFilter, FaSearch } from "react-icons/fa";
 
 const Invoices = () => {
@@ -34,9 +35,24 @@ const Invoices = () => {
   // Filtering and Search States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleSearch = (searchTerm) => {
+    setIsSearching(!!searchTerm);
+    if (!searchTerm) {
+      setSearchResults([]);
+      return;
+    }
+
+    const results = filteredInvoices.filter((invoice) =>
+      invoice.invoice_number.toUpperCase().includes(searchTerm)
+    );
+    setSearchResults(results);
+  };
 
   const filterInvoices = useCallback((allInvoices, status) => {
     if (status === "all") return allInvoices;
@@ -507,7 +523,7 @@ const Invoices = () => {
 
         const bottomDetailsData = [
           { label: "PAN No", value: "AAQCM3825L" },
-          { 
+          {
             label: "Provisional GST No",
             value: "27AAQCM3825L1ZW",
           },
@@ -709,12 +725,18 @@ const Invoices = () => {
             </button>
           )}
         </div>
-
+        <div className="mb-6">
+          <SearchBar onSearch={handleSearch} />
+        </div>
         <FilterSection />
         <PaginationControls />
         {/* Invoices Table */}
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          {filteredInvoices.length === 0 ? (
+          {isSearching && searchResults.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              No invoices found matching your search
+            </div>
+          ) : !isSearching && filteredInvoices.length === 0 ? (
             <div className="text-center py-10 text-gray-500">
               No invoices found
             </div>
@@ -743,48 +765,52 @@ const Invoices = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
-                  <tr
-                    key={invoice.invoice_id}
-                    className="hover:bg-gray-50 transition"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.invoice_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.customer_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(invoice.invoice_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      ₹{invoice.grand_total.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {renderInvoiceStatus(invoice.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleViewInvoice(invoice.invoice_id)}
-                          className="text-blue-500 hover:text-blue-700 transition flex items-center"
-                          title="View Invoice"
-                        >
-                          <FaEye className="mr-1" /> View
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDownloadInvoice(invoice.invoice_id)
-                          }
-                          className="text-green-500 hover:text-green-700 transition flex items-center"
-                          title="Download Invoice"
-                        >
-                          <FaDownload className="mr-1" /> Download
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {(isSearching ? searchResults : filteredInvoices).map(
+                  (invoice) => (
+                    <tr
+                      key={invoice.invoice_id}
+                      className="hover:bg-gray-50 transition"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {invoice.invoice_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {invoice.customer_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {new Date(invoice.invoice_date).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap font-bold">
+                        ₹{invoice.grand_total.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {renderInvoiceStatus(invoice.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() =>
+                              handleViewInvoice(invoice.invoice_id)
+                            }
+                            className="text-blue-500 hover:text-blue-700 transition flex items-center"
+                            title="View Invoice"
+                          >
+                            <FaEye className="mr-1" /> View
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDownloadInvoice(invoice.invoice_id)
+                            }
+                            className="text-green-500 hover:text-green-700 transition flex items-center"
+                            title="Download Invoice"
+                          >
+                            <FaDownload className="mr-1" /> Download
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import config from "../../../utils/GlobalConfig";
@@ -32,7 +32,6 @@ const NewPurchaseInvoice = () => {
 
   const [loading, setLoading] = useState(false);
   const [customGstRate, setCustomGstRate] = useState("");
-
   // Fetch vendors on component mount
   useEffect(() => {
     const fetchVendors = async () => {
@@ -64,6 +63,8 @@ const NewPurchaseInvoice = () => {
     generateInvoiceNumber();
   }, []);
 
+  // Add this near the top of your component, after the state declarations
+
   const generateInvoiceNumber = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -91,40 +92,46 @@ const NewPurchaseInvoice = () => {
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
 
-    // Special handling for custom GST
-    if (field === "gst_rate") {
-      if (value === "custom") {
-        // Reset to custom input mode
-        newItems[index] = {
-          ...newItems[index],
-          gst_rate: null,
-          custom_gst_input: "",
-        };
-      } else {
-        // For predefined GST rates
-        newItems[index] = {
-          ...newItems[index],
-          gst_rate: parseFloat(value),
-          custom_gst_input: "",
-        };
-      }
-    } else if (field === "custom_gst_input") {
-      // Handle custom GST input
-      const customRate = parseFloat(value);
+    // If vendor has no GST number, force GST rate to 0
+    if (!formData.vendor?.gst_number) {
       newItems[index] = {
         ...newItems[index],
-        gst_rate: isNaN(customRate) ? null : customRate, // Allow ALL numeric values
-        custom_gst_input: value,
-      };
-    } else {
-      // Handle other fields normally
-      newItems[index] = {
-        ...newItems[index],
+        gst_rate: 0,
+        gst_amount: 0,
         [field]: value,
       };
+    } else {
+      // Existing GST handling logic
+      if (field === "gst_rate") {
+        if (value === "custom") {
+          newItems[index] = {
+            ...newItems[index],
+            gst_rate: null,
+            custom_gst_input: "",
+          };
+        } else {
+          newItems[index] = {
+            ...newItems[index],
+            gst_rate: parseFloat(value),
+            custom_gst_input: "",
+          };
+        }
+      } else if (field === "custom_gst_input") {
+        const customRate = parseFloat(value);
+        newItems[index] = {
+          ...newItems[index],
+          gst_rate: isNaN(customRate) ? null : customRate,
+          custom_gst_input: value,
+        };
+      } else {
+        newItems[index] = {
+          ...newItems[index],
+          [field]: value,
+        };
+      }
     }
 
-    // Recalculate amounts
+    // Rest of the calculation logic remains the same
     const updatedItems = newItems.map((item) => {
       const baseAmount = item.quantity * item.rate;
       const gstRate = item.gst_rate || 0;
@@ -188,80 +195,104 @@ const NewPurchaseInvoice = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e) => {
+      if (e) {
+        e.preventDefault();
+      }
 
-    // Validation
-    if (!formData.vendor) {
-      toast.error("Please select a vendor");
-      return;
-    }
+      // Validation
+      if (!formData.vendor) {
+        toast.error("Please select a vendor");
+        return;
+      }
 
-    if (formData.items.length === 0) {
-      toast.error("Please add at least one item");
-      return;
-    }
+      if (formData.items.length === 0) {
+        toast.error("Please add at least one item");
+        return;
+      }
 
-    setLoading(true);
+      setLoading(true);
 
-    try {
-      const token = localStorage.getItem("token");
-      const submitData = {
-        ...formData,
-        vendor_id: formData.vendor.value,
-        vendor_name: formData.vendor.label,
-      };
+      try {
+        const token = localStorage.getItem("token");
+        const submitData = {
+          ...formData,
+          vendor_id: formData.vendor.value,
+          vendor_name: formData.vendor.label,
+          vendor_gst: formData.vendor.gst_number,
+        };
 
-      const response = await axios.post(
-        `${config.API_BASE_URL}/createPurchaseInvocie`,
-        submitData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+        console.log("Submit Data:", formData);
+        const response = await axios.post(
+          `${config.API_BASE_URL}/createPurchaseInvocie`,
+          submitData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      const DayBookData = {
-        account_head: "Expenses",
-        amount: response.data.data.total_amount,
-        bank_account_id: null,
-        bank_name: null,
-        bank_account_number: null,
-        bank_ifsc_code: null,
-        car_id: null,
-        category: "DIRECT",
-        company_id: response.data.data.vendor_id,
-        description: `Purchase invoice for ${response.data.data.vendor_name} `,
-        gst_applicable: response.data.data.total_gst > 0 ? true : false,
-        party_name: response.data.data.vendor_name,
-        party_type: "Vendor",
-        payment_method: "cash",
-        reference_number: response.data.data.invoice_number,
-        sub_group: "PURCHASE",
-        transaction_date: new Date(),
-        transaction_type: "DEBIT",
-        voucher_type: "Purchase",
-      };
+        const DayBookData = {
+          account_head: "Expenses",
+          amount: response.data.data.total_amount,
+          bank_account_id: null,
+          bank_name: null,
+          bank_account_number: null,
+          bank_ifsc_code: null,
+          car_id: null,
+          category: "DIRECT",
+          company_id: response.data.data.vendor_id,
+          description: `Purchase invoice for ${response.data.data.vendor_name} `,
+          gst_applicable: response.data.data.total_gst > 0 ? true : false,
+          party_name: response.data.data.vendor_name,
+          party_type: "Vendor",
+          payment_method: "cash",
+          reference_number: response.data.data.invoice_number,
+          sub_group: "PURCHASE",
+          transaction_date: new Date(),
+          transaction_type: "DEBIT",
+          voucher_type: "Purchase",
+        };
 
-      await axios.post(`${config.API_BASE_URL}/daybook/transactions`, DayBookData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      console.log(response);
-      toast.success("Purchase Invoice created successfully");
-      navigate("/purchase-invoices");
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to create purchase invoice"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        await axios.post(
+          `${config.API_BASE_URL}/daybook/transactions`,
+          DayBookData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        console.log(response);
+        toast.success("Purchase Invoice created successfully");
+        navigate("/purchase-invoices");
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Failed to create purchase invoice"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [formData, navigate]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault(); // Prevent browser's save dialog
+        console.log(e.key);
+        handleSubmit(e);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleSubmit]); // Add handleSubmit to dependency array
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -274,8 +305,8 @@ const NewPurchaseInvoice = () => {
 
           <form onSubmit={handleSubmit}>
             {/* Header Section */}
-            <div className="grid md:grid-cols-3 gap-6 mb-6">
-              <div>
+            <div className="grid md:grid-cols-3 gap-6 mb-6 background-black-50 p-4 rounded-lg">
+              <div className="bg-white">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vendor *
                 </label>
@@ -286,6 +317,34 @@ const NewPurchaseInvoice = () => {
                   placeholder="Select Vendor"
                   className="w-full"
                   required
+                  formatOptionLabel={({ label, gst_number }) => (
+                    <div>
+                      <div>{label}</div>
+                      {gst_number && (
+                        <div className="text-xs text-gray-500">
+                          GST: {gst_number}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      backgroundColor: "white",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isFocused ? "#f3f4f6" : "white",
+                      color: "black",
+                      "&:hover": {
+                        backgroundColor: "#f3f4f6",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      backgroundColor: "white",
+                    }),
+                  }}
                 />
               </div>
               <div>
@@ -394,66 +453,74 @@ const NewPurchaseInvoice = () => {
                   </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">
-                      GST Rate *
+                      GST Rate {formData.vendor?.gst_number && "*"}
                     </label>
-                    <div className="flex flex-col">
-                      <select
-                        value={
-                          item.gst_rate === null
-                            ? item.custom_gst_input
-                              ? "custom"
-                              : ""
-                            : // Check if it's a predefined rate
-                            [0, 5, 12, 18, 28].includes(item.gst_rate)
-                            ? item.gst_rate
-                            : "custom"
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          handleItemChange(index, "gst_rate", value);
-
-                          // If not custom, reset custom input
-                          if (value !== "custom") {
-                            const updatedItems = [...formData.items];
-                            updatedItems[index] = {
-                              ...updatedItems[index],
-                              custom_gst_input: "",
-                            };
-                            setFormData((prev) => ({
-                              ...prev,
-                              items: updatedItems,
-                            }));
+                    {formData.vendor?.gst_number ? (
+                      <div className="flex flex-col">
+                        <select
+                          value={
+                            item.gst_rate === null
+                              ? item.custom_gst_input
+                                ? "custom"
+                                : ""
+                              : [0, 5, 12, 18, 28].includes(item.gst_rate)
+                              ? item.gst_rate
+                              : "custom"
                           }
-                        }}
-                        className="w-full px-3 py-2 border rounded-md"
-                        required
-                      >
-                        <option value="">Select GST</option>
-                        <option value="0">0%</option>
-                        <option value="5">5%</option>
-                        <option value="12">12%</option>
-                        <option value="18">18%</option>
-                        <option value="28">28%</option>
-                        <option value="custom">Custom GST</option>
-                      </select>
-
-                      {(item.gst_rate === null ||
-                        (item.gst_rate !== null &&
-                          ![0, 5, 12, 18, 28].includes(item.gst_rate))) && (
-                        <input
-                          type="number"
-                          value={item.custom_gst_input}
                           onChange={(e) => {
                             const value = e.target.value;
-                            handleItemChange(index, "custom_gst_input", value);
+                            handleItemChange(index, "gst_rate", value);
+
+                            if (value !== "custom") {
+                              const updatedItems = [...formData.items];
+                              updatedItems[index] = {
+                                ...updatedItems[index],
+                                custom_gst_input: "",
+                              };
+                              setFormData((prev) => ({
+                                ...prev,
+                                items: updatedItems,
+                              }));
+                            }
                           }}
-                          placeholder="Enter Custom GST %"
-                          className="w-full px-3 py-2 border rounded-md mt-2"
-                          min="0"
-                          step="0.01"
-                        />
-                      )}
-                    </div>
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        >
+                          <option value="">Select GST</option>
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="12">12%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                          <option value="custom">Custom GST</option>
+                        </select>
+
+                        {(item.gst_rate === null ||
+                          (item.gst_rate !== null &&
+                            ![0, 5, 12, 18, 28].includes(item.gst_rate))) && (
+                          <input
+                            type="number"
+                            value={item.custom_gst_input}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              handleItemChange(
+                                index,
+                                "custom_gst_input",
+                                value
+                              );
+                            }}
+                            placeholder="Enter Custom GST %"
+                            className="w-full px-3 py-2 border rounded-md mt-2"
+                            min="0"
+                            step="0.01"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 py-2">
+                        GST not applicable
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -531,7 +598,7 @@ const NewPurchaseInvoice = () => {
                 disabled={loading}
                 className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Invoice"}
+                {loading ? "Creating..." : "Create Invoice (Ctrl+S)"}
               </button>
             </div>
           </form>

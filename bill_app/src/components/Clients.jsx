@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import AddCompanyModal from "./Modals/AddCompanyModal";
 import EditCompanyModal from "./Modals/EditCompanyModal";
 import Config from "../utils/GlobalConfig.js";
-import { useAuth } from "@/context/authContext";
+import { useAuth } from "@/context/authContext.jsx";
 
 const Clients = () => {
   const navigate = useNavigate();
