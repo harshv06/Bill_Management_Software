@@ -20,7 +20,7 @@ const AddTransactionModal = ({
   initialData = null,
   mode = "add",
 }) => {
-  // console.log(initialData)
+  console.log(initialData)
   const [formData, setFormData] = useState(
     initialData
       ? {
@@ -759,6 +759,7 @@ const AddTransactionModal = ({
                   Voucher Type
                 </label>
                 <select
+                  disabled={formData.sub_group === "INVOICE" || formData.sub_group === "PURCHASE"}
                   value={formData.voucher_type}
                   onChange={(e) =>
                     setFormData({ ...formData, voucher_type: e.target.value })

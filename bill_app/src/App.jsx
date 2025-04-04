@@ -17,7 +17,7 @@ import Dashboard from "./components/Dashboard";
 import Clients from "./components/Clients";
 import Invoices from "./components/Invoices";
 import Reports from "./components/Reports";
-import Settings from "./components/Settings";
+import Settings from "./components/Modals/Settings.jsx";
 import Fleet from "./components/Fleet";
 import CarDetails from "./pages/CarDetails";
 import ClientDetails from "./pages/ClientDetails";
@@ -305,6 +305,17 @@ function App() {
                   fallback={<UnauthorizedAccess />}
                 >
                   <CreateUserPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.ROLE_MANAGEMENT.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <Settings />
                 </PrivateRoute>
               }
             />

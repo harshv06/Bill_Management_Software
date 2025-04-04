@@ -7,6 +7,7 @@ import InvoiceDetailsModal from "../components/Modals/InvoiceModals/PurchaseInvo
 import { generatePurchaseInvoicePDF } from "../utils/PurchaseInvoicePdfGenerator";
 import { useAuth } from "@/context/authContext";
 import SearchBar from "../components/SearchBar/InvoiceSearchBar";
+import { toast } from "react-toastify";
 
 const PurchaseInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -24,6 +25,8 @@ const PurchaseInvoices = () => {
     totalItems: 0,
     limit: 10,
   });
+
+  const [deletingInvoice, setDeletingInvoice] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -268,6 +271,68 @@ const PurchaseInvoices = () => {
     );
   };
 
+
+  const handleDeleteInvoice = async (invoice) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      // Confirm deletion
+      const confirmDelete = window.confirm(
+        `Are you sure you want to delete invoice ${invoice.invoice_number}?`
+      );
+
+      if (!confirmDelete) return;
+
+      // Set the invoice being deleted
+      setDeletingInvoice(invoice);
+
+      const daybookResponse = await axios.get(
+        `${config.API_BASE_URL}/daybook/transactions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const matchingTransaction = daybookResponse.data.data.find(
+        (transaction) =>
+          transaction.reference_number === invoice.invoice_number.toString()
+      );
+      // Delete invoice
+      await axios.delete(
+        `${config.API_BASE_URL}/purchase-invoices/${invoice.purchase_invoice_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (matchingTransaction) {
+        await axios.delete(
+          `${config.API_BASE_URL}/daybook/transactions/${matchingTransaction.transaction_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      // Refresh the invoices list
+      fetchPurchaseInvoices();
+
+      // Show success message
+      toast.success("Invoice deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete invoice:", error);
+      toast.error(error.response?.data?.message || "Failed to delete invoice");
+    } finally {
+      setDeletingInvoice(null);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
@@ -394,6 +459,28 @@ const PurchaseInvoices = () => {
                           >
                             PDF
                           </button>
+
+                          {/* Add Delete Button */}
+                          {user.permissions.includes(
+                            "purchase_invoices:delete"
+                          ) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteInvoice(invoice);
+                              }}
+                              disabled={deletingInvoice === invoice}
+                              className={`text-red-600 hover:text-red-900 text-sm font-medium ${
+                                deletingInvoice === invoice
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
+                            >
+                              {deletingInvoice === invoice
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

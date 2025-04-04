@@ -9,6 +9,7 @@ import Select from "react-select";
 const NewPurchaseInvoice = () => {
   const navigate = useNavigate();
   const [vendors, setVendors] = useState([]);
+  const [customNumber, setCustomNumber] = useState("");
   const [formData, setFormData] = useState({
     vendor: null,
     invoice_date: new Date().toISOString().split("T")[0],
@@ -60,25 +61,27 @@ const NewPurchaseInvoice = () => {
     };
 
     fetchVendors();
-    generateInvoiceNumber();
-  }, []);
+    generateInvoiceNumber(customNumber); // Pass customNumber here
+  }, [customNumber]);
 
   // Add this near the top of your component, after the state declarations
 
-  const generateInvoiceNumber = () => {
+  const generateInvoiceNumber = (customNum = "") => {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
 
-    const currentCounter =
-      localStorage.getItem("purchaseInvoiceCounter") || "0";
-    const newCounter = (parseInt(currentCounter) + 1)
-      .toString()
-      .padStart(4, "0");
+    let numberPart;
+    if (customNum) {
+      numberPart = customNum;
+    } else {
+      const currentCounter =
+        localStorage.getItem("purchaseInvoiceCounter") || "0";
+      numberPart = (parseInt(currentCounter) + 1).toString().padStart(4, "0");
+      localStorage.setItem("purchaseInvoiceCounter", numberPart);
+    }
 
-    localStorage.setItem("purchaseInvoiceCounter", newCounter);
-
-    const invoiceNumber = `PI-${year}${month}-${newCounter}`;
+    const invoiceNumber = `PI-${year}${month}-${numberPart}`;
     setFormData((prev) => ({ ...prev, invoice_number: invoiceNumber }));
   };
 
@@ -298,14 +301,18 @@ const NewPurchaseInvoice = () => {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        {/* // Change this div's class */}
+        <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-8">
+          {" "}
+          {/* Changed from max-w-4xl to max-w-7xl */}
           <h1 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">
             Create New Purchase Invoice
           </h1>
-
           <form onSubmit={handleSubmit}>
             {/* Header Section */}
-            <div className="grid md:grid-cols-3 gap-6 mb-6 background-black-50 p-4 rounded-lg">
+            <div className="grid md:grid-cols-3 gap-8 mb-6 background-black-50 p-4 rounded-lg">
+              {" "}
+              {/* Changed gap-6 to gap-8 */}
               <div className="bg-white">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vendor *
@@ -351,12 +358,41 @@ const NewPurchaseInvoice = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Invoice Number
                 </label>
-                <input
-                  type="text"
-                  value={formData.invoice_number}
-                  readOnly
-                  className="w-full px-3 py-2 bg-gray-100 border rounded-md cursor-not-allowed"
-                />
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={formData.invoice_number}
+                    className="w-2/3 px-3 py-2 bg-gray-100 border rounded-md"
+                    readOnly
+                  />
+                  <div className="relative w-1/3">
+                    <input
+                      type="text"
+                      placeholder="Custom Number"
+                      value={customNumber}
+                      onChange={(e) => {
+                        setCustomNumber(e.target.value);
+                        generateInvoiceNumber(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 border rounded-md"
+                    />
+                    {customNumber && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomNumber("");
+                          generateInvoiceNumber();
+                        }}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: PI-YYYYMM-{customNumber || "XXXX"}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -395,7 +431,7 @@ const NewPurchaseInvoice = () => {
               {formData.items.map((item, index) => (
                 <div
                   key={index}
-                  className="grid grid-cols-6 gap-4 mb-4 p-4 bg-gray-50 rounded-lg"
+                  className="grid grid-cols-7 gap-4 mb-4 p-4 bg-gray-50 rounded-lg"
                 >
                   <div className="col-span-2">
                     <label className="block text-xs text-gray-600 mb-1">
@@ -412,7 +448,7 @@ const NewPurchaseInvoice = () => {
                       required
                     />
                   </div>
-                  <div>
+                  <div className="col-span-1">
                     <label className="block text-xs text-gray-600 mb-1">
                       Quantity *
                     </label>
@@ -431,7 +467,7 @@ const NewPurchaseInvoice = () => {
                       required
                     />
                   </div>
-                  <div>
+                  <div className="col-span-1">
                     <label className="block text-xs text-gray-600 mb-1">
                       Rate (₹) *
                     </label>
@@ -451,7 +487,7 @@ const NewPurchaseInvoice = () => {
                       required
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-xs text-gray-600 mb-1">
                       GST Rate {formData.vendor?.gst_number && "*"}
                     </label>
@@ -522,7 +558,7 @@ const NewPurchaseInvoice = () => {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="col-span-1 flex items-center justify-between">
                     <div>
                       <div className="font-semibold">
                         ₹{item.amount.toFixed(2)}
@@ -546,7 +582,7 @@ const NewPurchaseInvoice = () => {
             </div>
 
             {/* Totals and Notes */}
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
+            <div className="grid md:grid-cols-2 gap-8 mt-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Additional Notes
@@ -564,7 +600,7 @@ const NewPurchaseInvoice = () => {
                   placeholder="Optional notes for this invoice"
                 />
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="font-semibold">

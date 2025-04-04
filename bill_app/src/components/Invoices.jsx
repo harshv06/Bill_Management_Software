@@ -10,6 +10,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import logoImage from "../assets/letterhead Matoshree.png";
 import SearchBar from "./SearchBar/InvoiceSearchBar";
+import { toast } from "react-toastify";
 // import { FaPlus, FaEye, FaDownload, FaFilter, FaSearch } from "react-icons/fa";
 
 const Invoices = () => {
@@ -284,20 +285,26 @@ const Invoices = () => {
     };
 
     try {
-      // Fetch invoice details
+      // Fetch invoice and company data
       const token = localStorage.getItem("token");
-      const invoiceResponse = await axios.get(
-        `${Config.API_BASE_URL}/invoices/${invoiceId}`,
-        {
+      const [invoiceResponse, companyResponse] = await Promise.all([
+        axios.get(`${Config.API_BASE_URL}/invoices/${invoiceId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
-      );
+        }),
+        axios.get(`${Config.API_BASE_URL}/company-profile/get`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }),
+      ]);
 
       const invoiceData = invoiceResponse.data.data;
-      console.log(invoiceData);
+      const companyData = companyResponse.data.data;
+      console.log(companyData, invoiceData);
 
       const doc = new jsPDF({
         orientation: "portrait",
@@ -313,6 +320,14 @@ const Invoices = () => {
       // Calculate column widths
       const leftColumnWidth = (pageWidth - 3 * margin) / 2;
       const rightColumnWidth = (pageWidth - 3 * margin) / 2;
+
+      // Calculate totals with improved precision
+      const totalAmount = invoiceData.total_amount;
+      const gstAmount = {
+        igst: invoiceData.igst_amount || 0,
+        sgst: invoiceData.sgst_amount || 0,
+        cgst: invoiceData.cgst_amount || 0,
+      };
 
       // Letterhead Image
       const letterheadImage = new Image();
@@ -337,7 +352,17 @@ const Invoices = () => {
       const letterheadHeight = 175 * (pageWidth / 991);
       let currentY = letterheadHeight + 50;
 
-      // Dynamic Address Block Rendering
+      // Tax Invoice Title
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
+        align: "center",
+      });
+
+      // Billing Details Section
+      doc.setFontSize(10);
+
+      // Dynamic Customer Details - using the same renderAddressBlock function
       const renderAddressBlock = (
         x,
         y,
@@ -386,14 +411,6 @@ const Invoices = () => {
         }
       };
 
-      // Tax Invoice Title
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
-        align: "center",
-      });
-
-      doc.setFontSize(10);
       // Render Customer and Company Blocks
       renderAddressBlock(
         margin,
@@ -403,9 +420,10 @@ const Invoices = () => {
         invoiceData.customer_name,
         invoiceData.invoiceCompany?.address || "N/A",
         {
-          "GST No": invoiceData.invoiceCompany?.gst_number || "N/A",
+          GSTIN: invoiceData.invoiceCompany?.gst_number || "N/A",
           "PAN No": invoiceData.invoiceCompany?.pan_number || "N/A",
-          "State Code": invoiceData.invoiceCompany?.state_code || "27",
+          STATE: invoiceData.invoiceCompany?.state || "MAHARASHTRA",
+          CODE: invoiceData.invoiceCompany?.state_code || "27",
         }
       );
 
@@ -414,10 +432,17 @@ const Invoices = () => {
         currentY,
         rightColumnWidth,
         "From:",
-        "MATOSHREE FLEET SOLUTIONS PVT. LTD.",
-        "Office No. 201, 2nd Floor, Sai Corporate Park, Near Pune-Solapur Highway, Hadapsar, Pune - 411028",
+        companyData?.company_name,
+        `${companyData?.address_line1}\n${companyData?.address_line2}\n${companyData?.city}, ${companyData?.state} - ${companyData?.pincode}`,
         {
-          "Invoice Date": invoiceData.invoice_date,
+          "Invoice Date": new Date(invoiceData.invoice_date).toLocaleDateString(
+            "en-IN",
+            {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }
+          ),
           "Invoice No": invoiceData.invoice_number,
         }
       );
@@ -436,8 +461,8 @@ const Invoices = () => {
       ];
       const tableRows = invoiceData.invoiceItems.map((item, index) => [
         index + 1,
-        item.description || "N/A",
-        item.hsn_code || "N/A",
+        item.description,
+        item.hsn_code,
         item.quantity,
         formatNumber(parseFloat(item.rate)),
         formatNumber(parseFloat(item.amount)),
@@ -462,13 +487,39 @@ const Invoices = () => {
 
       // Financial Summary
       const finalY = doc.previousAutoTable.finalY + 20;
+      const calculateGSTPercentage = (gstAmount, totalAmount) => {
+        if (!totalAmount || totalAmount === 0) return 0;
+        return ((gstAmount / totalAmount) * 100).toFixed(1); // Returns percentage with 1 decimal place
+      };
+
       const financialDetails = [
-        {
-          label: "Total Amount",
-          value: formatNumber(invoiceData.total_amount),
-        },
-        { label: `SGST @2.5%`, value: formatNumber(invoiceData.sgst_amount) },
-        { label: `CGST @2.5%`, value: formatNumber(invoiceData.cgst_amount) },
+        { label: "Total Amount", value: formatNumber(totalAmount) },
+        ...(invoiceData.igst_amount > 0
+          ? [
+              {
+                label: `IGST @${calculateGSTPercentage(
+                  invoiceData.igst_amount,
+                  invoiceData.total_amount
+                )}%`,
+                value: formatNumber(gstAmount.igst),
+              },
+            ]
+          : [
+              {
+                label: `SGST @${calculateGSTPercentage(
+                  invoiceData.sgst_amount,
+                  invoiceData.total_amount
+                )}%`,
+                value: formatNumber(gstAmount.sgst),
+              },
+              {
+                label: `CGST @${calculateGSTPercentage(
+                  invoiceData.cgst_amount,
+                  invoiceData.total_amount
+                )}%`,
+                value: formatNumber(gstAmount.cgst),
+              },
+            ]),
         {
           label: "Grand Total",
           value: formatNumber(invoiceData.grand_total),
@@ -487,7 +538,7 @@ const Invoices = () => {
         );
       });
 
-      // Add grand total in words
+      // Amount in words
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text(
@@ -505,7 +556,7 @@ const Invoices = () => {
         bottomY,
         bottomDetails
       ) => {
-        // Draw main rectangle
+        // Same as your original function
         doc.rect(
           margin,
           bottomY + 100,
@@ -513,31 +564,17 @@ const Invoices = () => {
           160
         );
 
-        // Calculate column widths
         const pageWidth = doc.internal.pageSize.width;
         const columnWidth = (pageWidth - 3 * margin) / 2;
 
-        // Set font
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
 
-        const bottomDetailsData = [
-          { label: "PAN No", value: "AAQCM3825L" },
-          {
-            label: "Provisional GST No",
-            value: "27AAQCM3825L1ZW",
-          },
-          { label: "HSN/SAC Code", value: "996412" },
-          { label: "Nature of Transaction", value: "BUSINESS TO BUSINESS" },
-          { label: "Service Category", value: "EMPLOYEE TRANSPORTATION" },
-          { label: "Bank Name & Branch", value: "AMANORA PUNE MH 411028" },
-          { label: "Account No", value: "2221262245805293" },
-          { label: "IFSC Code", value: "AUBL0002622" },
-        ];
+        const leftColumnDetails = bottomDetails;
+        const rightColumnDetails = bottomDetails;
 
-        // Render Left Column - Labels
         doc.setFont("helvetica", "bold");
-        bottomDetailsData.forEach((detail, index) => {
+        leftColumnDetails.forEach((detail, index) => {
           doc.text(
             `${detail.label} :-`,
             margin + 10,
@@ -545,9 +582,8 @@ const Invoices = () => {
           );
         });
 
-        // Render Right Column - Values
         doc.setFont("helvetica", "bold");
-        bottomDetailsData.forEach((detail, index) => {
+        rightColumnDetails.forEach((detail, index) => {
           doc.text(
             `${detail.value}`,
             margin + columnWidth + 20,
@@ -555,7 +591,6 @@ const Invoices = () => {
           );
         });
 
-        // Vertical separator
         doc.setDrawColor(200, 200, 200);
         doc.line(
           margin + columnWidth + 10,
@@ -565,16 +600,33 @@ const Invoices = () => {
         );
       };
 
-      // Render Bottom Details
+      // Bottom Details
+      const bottomDetails = [
+        { label: "PAN No", value: companyData?.pan_number },
+        { label: "GST No", value: companyData?.gst_number },
+        { label: "HSN/SAC Code", value: companyData?.hsn },
+        {
+          label: "Nature of Transaction",
+          value: companyData?.nature_of_transaction,
+        },
+        { label: "Service Category", value: companyData?.service_category },
+        { label: "Bank Name & Branch", value: companyData?.bank_name },
+        { label: "Account No", value: companyData?.account_number },
+        { label: "IFSC Code", value: companyData?.ifsc_code },
+      ];
+
       const bottomY = finalY + 100;
-      renderBottomDetailsInTwoColumns(doc, margin, bottomY);
+      renderBottomDetailsInTwoColumns(doc, margin, bottomY, bottomDetails);
 
       // Save PDF
       const pdfBlob = doc.output("blob");
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `Invoice_${invoiceId}.pdf`);
+      link.setAttribute(
+        "download",
+        `Invoice_${invoiceData.invoice_number}.pdf`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();

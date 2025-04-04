@@ -818,7 +818,7 @@ const InvoiceDetailsModal = ({
   const ModalFooter = () => (
     <div className="flex justify-between p-6 border-t">
       <div>
-        {!isEditing ? (
+        {/* {!isEditing ? (
           <button
             onClick={() => setIsEditing(true)}
             className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition flex items-center"
@@ -835,15 +835,15 @@ const InvoiceDetailsModal = ({
           >
             <FaSave className="mr-2" /> Save Changes
           </button>
-        )}
+        )} */}
       </div>
       <div className="flex space-x-4">
-        <button
+        {/* <button
           onClick={generatePDF}
           className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition flex items-center"
         >
           <FaFileInvoice className="mr-2" /> Download Invoice
-        </button>
+        </button> */}
         <button
           onClick={onClose}
           className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition"
