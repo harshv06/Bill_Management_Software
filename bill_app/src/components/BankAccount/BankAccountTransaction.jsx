@@ -157,17 +157,17 @@ const BankAccountTransactions = ({ account, onAddTransaction }) => {
         {new Date(transaction.transaction_date).toLocaleDateString()}
       </td>
       <td className="p-2">{transaction.description}</td>
-      <td className="p-2 text-right">
+      <td className="p-2 text-right font-bold">
         {transaction.transaction_type === "CREDIT" ? "+" : "-"}₹
         {parseFloat(transaction.amount).toLocaleString()}
       </td>
-      <td className="p-2">
+      {/* <td className="p-2">
         {transaction.is_reconciled ? (
           <span className="text-green-500">Reconciled</span>
         ) : (
           <span className="text-yellow-500">Pending</span>
         )}
-      </td>
+      </td> */}
     </tr>
   );
 
@@ -364,7 +364,7 @@ const BankAccountTransactions = ({ account, onAddTransaction }) => {
                 <th className="p-2 text-left">Date</th>
                 <th className="p-2 text-left">Description</th>
                 <th className="p-2 text-right">Amount</th>
-                <th className="p-2 text-left">Status</th>
+                {/* <th className="p-2 text-left">Status</th> */}
               </tr>
             </thead>
             <tbody>{transactions.map(renderTransactionRow)}</tbody>

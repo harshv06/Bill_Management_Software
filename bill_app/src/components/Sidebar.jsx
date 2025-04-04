@@ -146,34 +146,6 @@ const Sidebar = () => {
             </svg>
           </div>
 
-          <MenuItem
-            to="/role-management"
-            icon={
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4.354a4 4 0 014 4V14a4 4 0 01-4 4H4a4 4 0 01-4-4v-5.646a4 4 0 014-4h8zM12 8V4a4 4 0 00-4-4H4a4 4 0 00-4 4v5.646a4 4 0 004 4h8a4 4 0 004-4z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 12h4a2 2 0 002-2V6a2 2 0 00-2-2h-4a2 2 0 00-2 2v4a2 2 0 002 2z"
-                />
-              </svg>
-            }
-          >
-            Role Management
-          </MenuItem>
-          {/* Financial Reports Dropdown Content */}
           {isFinancialDropdownOpen && (
             <div className="pl-6 space-y-1">
               <Link
@@ -218,6 +190,63 @@ const Sidebar = () => {
               </Link>
             </div>
           )}
+
+          <MenuItem
+            to="/GST-Reports"
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4.354a4 4 0 014 4V14a4 4 0 01-4 4H4a4 4 0 01-4-4v-5.646a4 4 0 014-4h8zM12 8V4a4 4 0 00-4-4H4a4 4 0 00-4 4v5.646a4 4 0 004 4h8a4 4 0 004-4z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 12h4a2 2 0 002-2V6a2 2 0 00-2-2h-4a2 2 0 00-2 2v4a2 2 0 002 2z"
+                />
+              </svg>
+            }
+          >
+            GST Reports
+          </MenuItem>
+
+          <MenuItem
+            to="/role-management"
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-6 h-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4.354a4 4 0 014 4V14a4 4 0 01-4 4H4a4 4 0 01-4-4v-5.646a4 4 0 014-4h8zM12 8V4a4 4 0 00-4-4H4a4 4 0 00-4 4v5.646a4 4 0 004 4h8a4 4 0 004-4z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 12h4a2 2 0 002-2V6a2 2 0 00-2-2h-4a2 2 0 00-2 2v4a2 2 0 002 2z"
+                />
+              </svg>
+            }
+          >
+            Role Management
+          </MenuItem>
+          {/* Financial Reports Dropdown Content */}
         </nav>
 
         {/* Logout Button */}

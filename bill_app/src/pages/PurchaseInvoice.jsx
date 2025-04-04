@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import config from "../utils/GlobalConfig";
@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import InvoiceDetailsModal from "../components/Modals/InvoiceModals/PurchaseInvoiceDetailsModal";
 import { generatePurchaseInvoicePDF } from "../utils/PurchaseInvoicePdfGenerator";
 import { useAuth } from "@/context/authContext";
+import SearchBar from "../components/SearchBar/InvoiceSearchBar";
 
 const PurchaseInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -14,6 +15,15 @@ const PurchaseInvoices = () => {
   const [error, setError] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    limit: 10,
+  });
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,6 +31,19 @@ const PurchaseInvoices = () => {
 
   const onUpdate = () => {
     fetchPurchaseInvoices();
+  };
+
+  const handleSearch = (searchTerm) => {
+    setIsSearching(!!searchTerm);
+    if (!searchTerm) {
+      setSearchResults([]);
+      return;
+    }
+
+    const results = filteredInvoices.filter((invoice) =>
+      invoice.invoice_number.toUpperCase().includes(searchTerm)
+    );
+    setSearchResults(results);
   };
 
   useEffect(() => {
@@ -34,7 +57,7 @@ const PurchaseInvoices = () => {
 
   useEffect(() => {
     fetchPurchaseInvoices();
-  }, []);
+  }, [pagination.currentPage, statusFilter]);
 
   const fetchPurchaseInvoices = async () => {
     try {
@@ -43,16 +66,33 @@ const PurchaseInvoices = () => {
         `${config.API_BASE_URL}/PurchaseInvoices`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          params: {
+            page: pagination.currentPage,
+            limit: pagination.limit,
+            status: statusFilter === "all" ? undefined : statusFilter,
+          },
         }
       );
-      setInvoices(response.data.data || []); // Assuming the data is nested under 'data'
-      filterInvoices(response.data.data || [], statusFilter);
+
+      setInvoices(response.data.data.invoices || []);
+      filterInvoices(response.data.data.invoices || [], statusFilter);
+      setPagination((prev) => ({
+        ...prev,
+        ...response.data.data.pagination,
+      }));
       setLoading(false);
     } catch (error) {
       console.error("Fetch error:", error);
       setError("Failed to fetch purchase invoices");
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({
+      ...prev,
+      currentPage: newPage,
+    }));
   };
 
   const handleViewInvoice = (invoice, event) => {
@@ -160,6 +200,74 @@ const PurchaseInvoices = () => {
     }
   };
 
+  const handleNewInvoiceShortcut = useCallback(
+    (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "g") {
+        e.preventDefault(); // Prevent default browser behavior
+        if (user.permissions.includes("purchase_invoices:create")) {
+          navigate("/purchase-invoices/new");
+        } else {
+          toast.error("You don't have permission to create invoices");
+        }
+      }
+    },
+    [navigate, user.permissions]
+  );
+
+  // Add event listener for keyboard shortcuts
+  useEffect(() => {
+    window.addEventListener("keydown", handleNewInvoiceShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleNewInvoiceShortcut);
+    };
+  }, [handleNewInvoiceShortcut]);
+
+  const PaginationControls = () => {
+    return (
+      <div className="flex justify-between items-center mt-4 mb-4 px-4">
+        <div className="text-sm text-gray-600">
+          Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{" "}
+          {Math.min(
+            pagination.currentPage * pagination.limit,
+            pagination.totalItems
+          )}{" "}
+          of {pagination.totalItems} entries
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handlePageChange(pagination.currentPage - 1)}
+            disabled={pagination.currentPage === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+
+          {[...Array(pagination.totalPages)].map((_, index) => (
+            <button
+              key={index + 1}
+              onClick={() => handlePageChange(index + 1)}
+              className={`px-3 py-1 border rounded ${
+                pagination.currentPage === index + 1
+                  ? "bg-blue-500 text-white"
+                  : "bg-white text-gray-700"
+              }`}
+            >
+              {index + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => handlePageChange(pagination.currentPage + 1)}
+            disabled={pagination.currentPage === pagination.totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
@@ -168,6 +276,9 @@ const PurchaseInvoices = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             Purchase Invoices
           </h1>
+          <span className="text-xs text-gray-500">
+            Press Ctrl+G to create new invoice
+          </span>
           {user.permissions.includes("purchase_invoices:create") && (
             <Link
               to="/purchase-invoices/new"
@@ -178,7 +289,12 @@ const PurchaseInvoices = () => {
           )}
         </div>
 
+        <div className="mb-6">
+          <SearchBar onSearch={handleSearch} />
+        </div>
+
         <FilterSection />
+        <PaginationControls />
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -217,68 +333,72 @@ const PurchaseInvoices = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
-                  <tr
-                    key={invoice.purchase_invoice_id}
-                    onClick={() => handleViewInvoice(invoice)}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.invoice_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.vendor_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {formatDate(invoice.invoice_date)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.items?.length || 0} items
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm">
-                        <div>
-                          ₹
-                          {Number(invoice.total_amount).toLocaleString("en-IN")}
+                {(isSearching ? searchResults : filteredInvoices).map(
+                  (invoice) => (
+                    <tr
+                      key={invoice.purchase_invoice_id}
+                      onClick={() => handleViewInvoice(invoice)}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {invoice.invoice_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {invoice.vendor_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {formatDate(invoice.invoice_date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {invoice.items?.length || 0} items
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          <div>
+                            ₹
+                            {Number(invoice.total_amount).toLocaleString(
+                              "en-IN"
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            GST: ₹
+                            {Number(invoice.total_gst).toLocaleString("en-IN")}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          GST: ₹
-                          {Number(invoice.total_gst).toLocaleString("en-IN")}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(
-                          invoice.status
-                        )}`}
-                      >
-                        {invoice.status.charAt(0).toUpperCase() +
-                          invoice.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent row click
-                            handleViewInvoice(invoice, e);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(
+                            invoice.status
+                          )}`}
                         >
-                          View
-                        </button>
+                          {invoice.status.charAt(0).toUpperCase() +
+                            invoice.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click
+                              handleViewInvoice(invoice, e);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                          >
+                            View
+                          </button>
 
-                        <button
-                          onClick={(e) => handleDownloadPDF(invoice, e)}
-                          className="text-green-600 hover:text-green-900 text-sm font-medium"
-                        >
-                          PDF
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <button
+                            onClick={(e) => handleDownloadPDF(invoice, e)}
+                            className="text-green-600 hover:text-green-900 text-sm font-medium"
+                          >
+                            PDF
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
 

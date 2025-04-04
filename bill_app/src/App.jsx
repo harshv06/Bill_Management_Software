@@ -35,6 +35,7 @@ import BankReconciliationPage from "./pages/BankReconciliationPage";
 import BalanceSheetPage from "./pages/BalanceSheet";
 import ProfitAndLossPage from "./pages/ProfitAndLossPages";
 import CreateUserPage from "./pages/CreateUserPage";
+import GSTReportPage from "./pages/GST_Reports.jsx";
 
 // Unauthorized Access Component
 const UnauthorizedAccess = () => {
@@ -280,6 +281,18 @@ function App() {
                   fallback={<UnauthorizedAccess />}
                 >
                   <BalanceSheetPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/GST-Reports"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.FINANCIAL_REPORTS.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <GSTReportPage />
                 </PrivateRoute>
               }
             />

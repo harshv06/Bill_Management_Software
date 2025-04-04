@@ -145,8 +145,11 @@ const GenerateInvoiceModal = ({
         totalAmount +
         (gstRates.useIGST ? gstAmount.igst : gstAmount.sgst + gstAmount.cgst);
 
+      console.log("Invoice Data:", invoiceDetails);
+
       const invoiceData = {
         invoice_number: invoiceDetails.billNumber,
+        customer_gst: invoiceDetails.customerDetails.gst,
         company_id: invoiceDetails.customerDetails.company_id,
         total_amount: totalAmount,
         sgst_rate: gstRates.useIGST ? 0 : gstRates.sgst,
@@ -276,62 +279,93 @@ const GenerateInvoiceModal = ({
 
     const convertToWords = (num) => {
       if (num === 0) return "Zero";
-    
+
       const ones = [
-        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", 
-        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", 
-        "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+        "",
+        "One",
+        "Two",
+        "Three",
+        "Four",
+        "Five",
+        "Six",
+        "Seven",
+        "Eight",
+        "Nine",
+        "Ten",
+        "Eleven",
+        "Twelve",
+        "Thirteen",
+        "Fourteen",
+        "Fifteen",
+        "Sixteen",
+        "Seventeen",
+        "Eighteen",
+        "Nineteen",
       ];
-      
+
       const tens = [
-        "", "", "Twenty", "Thirty", "Forty", "Fifty", 
-        "Sixty", "Seventy", "Eighty", "Ninety"
+        "",
+        "",
+        "Twenty",
+        "Thirty",
+        "Forty",
+        "Fifty",
+        "Sixty",
+        "Seventy",
+        "Eighty",
+        "Ninety",
       ];
-    
+
       const convertSection = (n) => {
         if (n === 0) return "";
-        
+
         if (n < 20) return ones[n] + " ";
-        
+
         if (n < 100) {
-          return tens[Math.floor(n / 10)] + 
-                 (n % 10 !== 0 ? " " + ones[n % 10] : "") + " ";
+          return (
+            tens[Math.floor(n / 10)] +
+            (n % 10 !== 0 ? " " + ones[n % 10] : "") +
+            " "
+          );
         }
-        
+
         if (n < 1000) {
-          return ones[Math.floor(n / 100)] + " Hundred " + 
-                 (n % 100 !== 0 ? "and " + convertSection(n % 100) : "");
+          return (
+            ones[Math.floor(n / 100)] +
+            " Hundred " +
+            (n % 100 !== 0 ? "and " + convertSection(n % 100) : "")
+          );
         }
-        
+
         return "";
       };
-    
+
       const crore = Math.floor(num / 10000000);
       const lakh = Math.floor((num % 10000000) / 100000);
       const thousand = Math.floor((num % 100000) / 1000);
       const remainder = num % 1000;
-    
+
       let result = "";
-    
+
       if (crore > 0) {
         result += convertSection(crore) + "Crore ";
       }
-    
+
       if (lakh > 0) {
         result += convertSection(lakh) + "Lakh ";
       }
-    
+
       if (thousand > 0) {
         result += convertSection(thousand) + "Thousand ";
       }
-    
+
       if (remainder > 0) {
         result += convertSection(remainder);
       }
-    
+
       return result.trim() + " Rupees Only";
     };
-    console.log(invoiceDetails)
+    console.log(invoiceDetails);
     try {
       setLoading(true);
       setError(null);
@@ -695,13 +729,35 @@ const GenerateInvoiceModal = ({
     }));
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check if Ctrl/Cmd + S is pressed
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault(); // Prevent browser's save dialog
+
+        // Only proceed if form is valid and not already loading
+        if (!loading && validateForm()) {
+          generatePDF();
+        }
+      }
+    };
+
+    // Add event listener
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [loading, generatePDF, validateForm]); // Add dependencies
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
 
       {/* Main Content Area */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-transparent bg-opacity-50 backdrop-blur-sm"
         onClick={onClose} // Close modal when clicking outside
       >
         <div
@@ -834,175 +890,180 @@ const GenerateInvoiceModal = ({
             </tbody>
           </table>
 
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              GST Configuration
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-4">
-                <input
-                  type="checkbox"
-                  id="useIGST"
-                  checked={gstRates.useIGST}
-                  onChange={(e) =>
-                    setGstRates((prev) => ({
-                      ...prev,
-                      useIGST: e.target.checked,
-                    }))
-                  }
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="useIGST"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Use IGST
-                </label>
-              </div>
-
-              {!gstRates.useIGST ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      SGST Rate (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={gstRates.sgst}
-                      onChange={(e) =>
-                        setGstRates((prev) => ({
-                          ...prev,
-                          sgst: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CGST Rate (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={gstRates.cgst}
-                      onChange={(e) =>
-                        setGstRates((prev) => ({
-                          ...prev,
-                          cgst: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    IGST Rate (%)
-                  </label>
+          {invoiceDetails.customerDetails.gst && (
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                GST Configuration
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-center space-x-4">
                   <input
-                    type="number"
-                    value={gstRates.igst}
+                    type="checkbox"
+                    id="useIGST"
+                    checked={gstRates.useIGST}
                     onChange={(e) =>
                       setGstRates((prev) => ({
                         ...prev,
-                        igst: parseFloat(e.target.value) || 0,
+                        useIGST: e.target.checked,
                       }))
                     }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    step="0.01"
-                    min="0"
-                    max="100"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
+                  <label
+                    htmlFor="useIGST"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Use IGST
+                  </label>
                 </div>
-              )}
-            </div>
 
-            {/* GST Summary */}
-            <div className="mt-4 p-3 bg-white rounded-md shadow-sm">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Tax Summary
-              </h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Total Amount:</span>
-                  <span className="ml-2 font-medium">
-                    ₹
-                    {products
-                      .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
-                      .toFixed(2)}
-                  </span>
-                </div>
                 {!gstRates.useIGST ? (
                   <>
                     <div>
-                      <span className="text-gray-500">SGST Amount:</span>
-                      <span className="ml-2 font-medium">
-                        ₹
-                        {(
-                          products.reduce(
-                            (sum, p) => sum + (parseFloat(p.amount) || 0),
-                            0
-                          ) *
-                          (gstRates.sgst / 100)
-                        ).toFixed(2)}
-                      </span>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SGST Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={gstRates.sgst}
+                        onChange={(e) =>
+                          setGstRates((prev) => ({
+                            ...prev,
+                            sgst: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                      />
                     </div>
                     <div>
-                      <span className="text-gray-500">CGST Amount:</span>
-                      <span className="ml-2 font-medium">
-                        ₹
-                        {(
-                          products.reduce(
-                            (sum, p) => sum + (parseFloat(p.amount) || 0),
-                            0
-                          ) *
-                          (gstRates.cgst / 100)
-                        ).toFixed(2)}
-                      </span>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        CGST Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={gstRates.cgst}
+                        onChange={(e) =>
+                          setGstRates((prev) => ({
+                            ...prev,
+                            cgst: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                      />
                     </div>
                   </>
                 ) : (
                   <div>
-                    <span className="text-gray-500">IGST Amount:</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      IGST Rate (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={gstRates.igst}
+                      onChange={(e) =>
+                        setGstRates((prev) => ({
+                          ...prev,
+                          igst: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* GST Summary */}
+              <div className="mt-4 p-3 bg-white rounded-md shadow-sm">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Tax Summary
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Total Amount:</span>
                     <span className="ml-2 font-medium">
+                      ₹
+                      {products
+                        .reduce(
+                          (sum, p) => sum + (parseFloat(p.amount) || 0),
+                          0
+                        )
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                  {!gstRates.useIGST ? (
+                    <>
+                      <div>
+                        <span className="text-gray-500">SGST Amount:</span>
+                        <span className="ml-2 font-medium">
+                          ₹
+                          {(
+                            products.reduce(
+                              (sum, p) => sum + (parseFloat(p.amount) || 0),
+                              0
+                            ) *
+                            (gstRates.sgst / 100)
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">CGST Amount:</span>
+                        <span className="ml-2 font-medium">
+                          ₹
+                          {(
+                            products.reduce(
+                              (sum, p) => sum + (parseFloat(p.amount) || 0),
+                              0
+                            ) *
+                            (gstRates.cgst / 100)
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <span className="text-gray-500">IGST Amount:</span>
+                      <span className="ml-2 font-medium">
+                        ₹
+                        {(
+                          products.reduce(
+                            (sum, p) => sum + (parseFloat(p.amount) || 0),
+                            0
+                          ) *
+                          (gstRates.igst / 100)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-gray-500">Grand Total:</span>
+                    <span className="ml-2 font-medium text-green-600">
                       ₹
                       {(
                         products.reduce(
                           (sum, p) => sum + (parseFloat(p.amount) || 0),
                           0
                         ) *
-                        (gstRates.igst / 100)
+                        (1 +
+                          (gstRates.useIGST
+                            ? gstRates.igst
+                            : gstRates.sgst + gstRates.cgst) /
+                            100)
                       ).toFixed(2)}
                     </span>
                   </div>
-                )}
-                <div>
-                  <span className="text-gray-500">Grand Total:</span>
-                  <span className="ml-2 font-medium text-green-600">
-                    ₹
-                    {(
-                      products.reduce(
-                        (sum, p) => sum + (parseFloat(p.amount) || 0),
-                        0
-                      ) *
-                      (1 +
-                        (gstRates.useIGST
-                          ? gstRates.igst
-                          : gstRates.sgst + gstRates.cgst) /
-                          100)
-                    ).toFixed(2)}
-                  </span>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-between">
             <div>
@@ -1052,7 +1113,10 @@ const GenerateInvoiceModal = ({
                     Generating...
                   </span>
                 ) : (
-                  "Generate Invoice"
+                  <>
+                    Generate Invoice{" "}
+                    <span className="text-xs ml-2">(Ctrl+S)</span>
+                  </>
                 )}
               </button>
             </div>

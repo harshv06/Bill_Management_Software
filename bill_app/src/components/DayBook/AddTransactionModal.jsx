@@ -70,20 +70,6 @@ const AddTransactionModal = ({
     "Capital",
   ];
 
-  const subAccounts = {
-    Assets: [
-      "Cash",
-      "Bank",
-      "Accounts Receivable",
-      "Fixed Assets",
-      "Inventory",
-    ],
-    Liabilities: ["Accounts Payable", "Loans", "Tax Payable"],
-    Income: ["Sales", "Service Revenue", "Interest Income"],
-    Expenses: ["Purchase", "Salary", "Rent", "Utilities", "Office Expenses"],
-    Capital: ["Owner's Capital", "Drawings"],
-  };
-
   const voucherTypes = [
     "Payment",
     "Receipt",
@@ -126,26 +112,6 @@ const AddTransactionModal = ({
   ];
 
   const PREDEFINED_GROUPS = [
-    "Salary",
-    "Rent",
-    "Utilities",
-    "Office Expenses",
-    "Travel",
-    "Maintenance",
-    "Supplies",
-    "Marketing",
-    "Legal",
-    "Consulting",
-    "Insurance",
-    "Training",
-    "Communication",
-    "Transportation",
-    "Meals & Entertainment",
-    "Printing & Stationery",
-    "Software & Subscriptions",
-    "Repairs & Maintenance",
-    "Professional Fees",
-    "Miscellaneous",
   ];
 
   const resetForm = () => {
