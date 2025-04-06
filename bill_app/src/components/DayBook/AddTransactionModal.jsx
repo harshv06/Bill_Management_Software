@@ -20,7 +20,7 @@ const AddTransactionModal = ({
   initialData = null,
   mode = "add",
 }) => {
-  console.log(initialData)
+  console.log(initialData);
   const [formData, setFormData] = useState(
     initialData
       ? {
@@ -37,6 +37,8 @@ const AddTransactionModal = ({
           party_type: initialData.party_type || "",
           company_id: initialData.company_id || "",
           car_id: initialData.car_id || "",
+          tds_applicable: false,
+          tds_percentage: "",
         }
       : {
           transaction_date: new Date(),
@@ -59,6 +61,8 @@ const AddTransactionModal = ({
           company_id: "",
           car_id: "",
           sub_group: "",
+          tds_applicable: false,
+          tds_percentage: "",
         }
   );
 
@@ -111,8 +115,7 @@ const AddTransactionModal = ({
     "other",
   ];
 
-  const PREDEFINED_GROUPS = [
-  ];
+  const PREDEFINED_GROUPS = [];
 
   const resetForm = () => {
     setFormData(
@@ -759,7 +762,10 @@ const AddTransactionModal = ({
                   Voucher Type
                 </label>
                 <select
-                  disabled={formData.sub_group === "INVOICE" || formData.sub_group === "PURCHASE"}
+                  disabled={
+                    formData.sub_group === "INVOICE" ||
+                    formData.sub_group === "PURCHASE"
+                  }
                   value={formData.voucher_type}
                   onChange={(e) =>
                     setFormData({ ...formData, voucher_type: e.target.value })
@@ -862,6 +868,118 @@ const AddTransactionModal = ({
                       </button>
                     </p>
                   )}
+
+                  {/* TDS Section - Only show when Voucher Type is Sales */}
+                  {formData.voucher_type === "Sales" && (
+                    <div className="mt-2 bg-gray-100 p-3 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id="tds_applicable"
+                          checked={formData.tds_applicable}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              tds_applicable: e.target.checked,
+                              // Reset percentage if unchecked
+                              tds_percentage: e.target.checked
+                                ? formData.tds_percentage
+                                : "",
+                            })
+                          }
+                          className="mr-2"
+                        />
+                        <label
+                          htmlFor="tds_applicable"
+                          className="text-xs font-medium text-gray-700"
+                        >
+                          TDS Applicable
+                        </label>
+                      </div>
+
+                      {formData.tds_applicable && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            TDS Percentage
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.tds_percentage}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                tds_percentage: e.target.value,
+                              })
+                            }
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            className="w-full border rounded p-2 text-xs"
+                            placeholder="Enter TDS Percentage"
+                          />
+                          {/* Validation message */}
+                          {formData.tds_percentage &&
+                            (parseFloat(formData.tds_percentage) < 0 ||
+                              parseFloat(formData.tds_percentage) > 100) && (
+                              <p className="text-xs text-red-500 mt-1">
+                                TDS percentage must be between 0 and 100
+                              </p>
+                            )}
+
+                          {/* TDS Summary */}
+                          <div className="mt-2 bg-white p-2 rounded-lg">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-gray-600">
+                                  Total Amount:
+                                </span>
+                                <span className="ml-2 font-medium">
+                                  ₹{parseFloat(formData.amount || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">
+                                  TDS Percentage:
+                                </span>
+                                <span className="ml-2 font-medium">
+                                  {formData.tds_percentage}%
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">
+                                  TDS Amount:
+                                </span>
+                                <span className="ml-2 font-medium text-red-600">
+                                  ₹
+                                  {(
+                                    (parseFloat(formData.amount || 0) *
+                                      parseFloat(
+                                        formData.tds_percentage || 0
+                                      )) /
+                                    100
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">
+                                  Net Amount:
+                                </span>
+                                <span className="ml-2 font-medium text-green-600">
+                                  ₹
+                                  {(
+                                    parseFloat(formData.amount || 0) *
+                                    (1 -
+                                      parseFloat(formData.tds_percentage || 0) /
+                                        100)
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -911,7 +1029,10 @@ const AddTransactionModal = ({
                     Amount
                   </label>
                   <input
-                    disabled={formData.sub_group === "INVOICE" || formData.sub_group === "PURCHASE"}
+                    disabled={
+                      formData.sub_group === "INVOICE" ||
+                      formData.sub_group === "PURCHASE"
+                    }
                     type="number"
                     value={formData.amount}
                     onChange={(e) =>
