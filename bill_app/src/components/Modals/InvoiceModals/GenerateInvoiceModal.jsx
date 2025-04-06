@@ -23,7 +23,7 @@ const GenerateInvoiceModal = ({
   const [products, setProducts] = useState([
     { description: "", hsn: "", quantity: 1, rate: "", amount: "" },
   ]);
-  const [customNumber, setCustomNumber] = useState('');
+  const [customNumber, setCustomNumber] = useState("");
   const [companyDetails, setCompanyProfile] = useState(null);
   useEffect(() => {
     const fetchCompanyProfile = async () => {
@@ -62,7 +62,6 @@ const GenerateInvoiceModal = ({
               hsn_code: profile?.hsn,
               service_category: profile?.service_category,
               nature_of_transaction: profile?.nature_of_transaction,
-
             },
           }));
         }
@@ -81,10 +80,11 @@ const GenerateInvoiceModal = ({
     const companyProfile = savedProfile ? JSON.parse(savedProfile) : null;
     console.log("Company Profile:", companyProfile);
     return {
-      billNumber: `INV-${new Date().getFullYear()}-${Math.floor(
-        Math.random() * 10000
-      )}`,
+      billNumber: `MFS-${new Date().getFullYear()}-${
+        new Date().getFullYear() + 1
+      }`, // Initial format
       billDate: new Date().toISOString().split("T")[0],
+      customNumber: "", // New field for custom number
       companyDetails: companyProfile
         ? {
             name: companyProfile.company_name,
@@ -377,7 +377,6 @@ const GenerateInvoiceModal = ({
     img.src = logoImage;
   }, []);
 
-
   const generatePDF = async () => {
     console.log("Generating PDF...:", invoiceDetails);
     // Number formatting function
@@ -541,6 +540,7 @@ const GenerateInvoiceModal = ({
       let currentY = letterheadHeight + 50;
 
       // Tax Invoice Title
+      doc.rect(40,currentY-30,pageWidth-80,30); // Draw line
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
@@ -561,11 +561,12 @@ const GenerateInvoiceModal = ({
         additionalDetails = {}
       ) => {
         // Box
-        doc.rect(x, y, width, 130);
+        doc.rect(x+10, y, width-10, 130);
 
         // Title
         doc.setFont("helvetica", "normal");
-        doc.text(title, x + 10, y + 25);
+        doc.setFontSize(12);
+        doc.text(title, x + 20, y + 25);
 
         // Name and Address
         doc.setFont("helvetica", "bold");
@@ -573,27 +574,27 @@ const GenerateInvoiceModal = ({
         const nameLines = doc.splitTextToSize(name, width - 20);
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
+        doc.setFontSize(14);
         const addressLines = doc.splitTextToSize(address, width - 20);
 
         let lineY = y + 40;
         nameLines.forEach((line) => {
-          doc.text(line, x + 10, lineY);
+          doc.text(line, x + 20, lineY);
           lineY += 15;
         });
 
         addressLines.forEach((line) => {
-          doc.text(line, x + 10, lineY);
-          lineY += 12;
+          doc.text(line, x + 20, lineY);
+          lineY += 17;
         });
 
         // Additional Details
         if (Object.keys(additionalDetails).length) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
           let detailY = y + 130 + 15;
           Object.entries(additionalDetails).forEach(([key, value]) => {
-            doc.text(`${key}: ${value}`, x + 10, detailY);
+            doc.text(`${key}: ${value}`, x + 20, detailY);
             detailY += 15;
           });
         }
@@ -608,10 +609,10 @@ const GenerateInvoiceModal = ({
         invoiceDetails.customerDetails.name,
         invoiceDetails.customerDetails.address,
         {
-          "GSTIN": invoiceDetails.customerDetails.gst || "N/A",
+          GSTIN: invoiceDetails.customerDetails.gst || "N/A",
           "PAN No": invoiceDetails.customerDetails.pan || "N/A",
-          "STATE": "MAHARASHTRA",
-          "CODE": "27"
+          STATE: "MAHARASHTRA",
+          CODE: "27",
         }
       );
 
@@ -636,6 +637,8 @@ const GenerateInvoiceModal = ({
       );
 
       // Move to next section
+      doc.rect(margin+10, currentY+130, pageWidth/2-55, 65);
+      doc.rect(pageWidth/2+15, currentY+130, pageWidth/2-55, 65);
       currentY += 180;
 
       // Product Table
@@ -657,14 +660,15 @@ const GenerateInvoiceModal = ({
       ]);
 
       doc.autoTable({
-        startY: currentY + 10,
+        startY: currentY + 30 ,
         head: [tableColumn],
         body: tableRows,
         theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 5,
+          fontSize: 12,
+          cellPadding: 15,
           overflow: "linebreak",
+          halign: "center",
         },
         headStyles: {
           fillColor: [41, 128, 185],
@@ -699,21 +703,21 @@ const GenerateInvoiceModal = ({
 
       // Render Financial Summary
       financialDetails.forEach((detail, index) => {
-        doc.setFont(detail.bold ? "helvetica-bold" : "helvetica", "normal");
+        doc.setFont(detail.bold ? "helvetica" : "helvetica", "normal");
         doc.setFontSize(detail.bold ? 14 : 12);
         doc.text(
           `${detail.label}: ${detail.value}`,
-          margin + 10,
+          margin + 15,
           finalY + index * 20
         );
       });
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
       doc.text(
         `Amount in Words: ${convertToWords(Math.round(grandTotal))}`,
-        margin + 10,
-        finalY + financialDetails.length * 20 + 20
+        margin + 15,
+        finalY-20 + financialDetails.length * 20 + 20
       );
 
       const renderBottomDetailsInTwoColumns = (
@@ -736,7 +740,7 @@ const GenerateInvoiceModal = ({
 
         // Set font
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
+        doc.setFontSize(12);
 
         // Split details into two columns
         const leftColumnDetails = bottomDetails;
@@ -836,6 +840,10 @@ const GenerateInvoiceModal = ({
       }
     }
 
+    if (!invoiceDetails.customNumber) {
+      toast.error("Please enter a custom invoice number");
+      return false;
+    }
     // Validate products
     const invalidProducts = products.some(
       (product) => !product.description || !product.rate || !product.quantity
@@ -952,6 +960,37 @@ const GenerateInvoiceModal = ({
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {/* Existing company and date fields */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Invoice Number
+              </label>
+              <div className="flex items-center">
+                <span className="mr-2 text-gray-600">
+                  {`MFS-${new Date().getFullYear()}-${
+                    new Date().getFullYear() + 1
+                  }-`}
+                </span>
+                <input
+                  type="text"
+                  value={invoiceDetails.customNumber}
+                  onChange={(e) =>
+                    setInvoiceDetails((prev) => ({
+                      ...prev,
+                      customNumber: e.target.value,
+                      billNumber: `MFS-${new Date().getFullYear()}-${
+                        new Date().getFullYear() + 1
+                      }-${e.target.value}`,
+                    }))
+                  }
+                  placeholder="Enter custom number"
+                  className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
           </div>
 

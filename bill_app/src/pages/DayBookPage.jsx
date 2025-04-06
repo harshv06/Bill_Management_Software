@@ -2,14 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { format } from "date-fns";
-import {
-  FaPlus,
-  FaFileDownload,
-  FaFilter,
-  FaChartLine,
-  FaExclamationTriangle,
-  FaSync,
-} from "react-icons/fa";
+
 import Config from "../utils/GlobalConfig";
 import Sidebar from "../components/Sidebar";
 import AddTransactionModal from "../components/DayBook/AddTransactionModal";
@@ -21,6 +14,10 @@ import { toast } from "react-hot-toast";
 import BankAccountService from "../utils/BankAccountService";
 import { useAuth } from "@/context/authContext.jsx";
 import config from "../utils/GlobalConfig";
+import PaginationControls from "../components/CustomComponents/Daybook/DaybookPagination";
+import DayBookHeader from "../components/CustomComponents/Daybook/Header";
+import ErrorDisplay from "../components/CustomComponents/Daybook/ErrorDisplay";
+import EmptyState from "../components/CustomComponents/Daybook/EmptyState";
 
 const DayBookPage = () => {
   const [transactions, setTransactions] = useState([]);
@@ -43,9 +40,7 @@ const DayBookPage = () => {
     type: "all",
     category: "all",
   });
-  const [showOpeningBalanceModal, setShowOpeningBalanceModal] = useState(false);
   const [hasOpeningBalance, setHasOpeningBalance] = useState(false);
-  const [isClosingMonth, setIsClosingMonth] = useState(false);
   const [initialTransactionType, setInitialTransactionType] = useState(null);
   const { user } = useAuth();
 
@@ -191,52 +186,6 @@ const DayBookPage = () => {
         page: newPage,
       }));
     }
-  };
-
-  const PaginationControls = () => {
-    // Only render if there are multiple pages
-    if (pagination.totalPages <= 1) return null;
-
-    return (
-      <div className="flex justify-center items-center mt-4 space-x-4">
-        <button
-          onClick={() => handlePageChange(pagination.page - 1)}
-          disabled={!pagination.hasPrevPage}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Previous
-        </button>
-
-        <div className="flex items-center space-x-2">
-          {/* Page number input */}
-          <input
-            type="number"
-            min="1"
-            max={pagination.totalPages}
-            value={pagination.page}
-            onChange={(e) => {
-              const page = parseInt(e.target.value);
-              handlePageChange(page);
-            }}
-            className="w-16 text-center border rounded px-2 py-1"
-          />
-          <span>of {pagination.totalPages}</span>
-        </div>
-
-        <button
-          onClick={() => handlePageChange(pagination.page + 1)}
-          disabled={!pagination.hasNextPage}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next
-        </button>
-
-        {/* Total count display */}
-        <div className="text-gray-600">
-          Total: {pagination.totalCount} transactions
-        </div>
-      </div>
-    );
   };
 
   const generateUniqueReferenceNumber = () => {
@@ -527,6 +476,7 @@ const DayBookPage = () => {
       };
 
       console.log("Final Update Data:", finalUpdateData);
+      console.log("Original Transaction:", originalTransaction);
 
       // Prepare balance update data
       const balanceUpdateData = {
@@ -565,7 +515,6 @@ const DayBookPage = () => {
           } else {
             toast.error("Error updating bank account balance");
           }
-
         }
       }
 
@@ -605,67 +554,19 @@ const DayBookPage = () => {
     }
   };
 
-  const ErrorDisplay = ({ message, onRetry }) => (
-    <div className="flex flex-col items-center justify-center p-8 bg-red-50 rounded-lg">
-      <FaExclamationTriangle className="text-red-500 text-4xl mb-4" />
-      <p className="text-red-700 mb-4">{message}</p>
-      <button
-        onClick={onRetry}
-        className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-      >
-        <FaSync className="mr-2" /> Retry
-      </button>
-    </div>
-  );
-
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
-      <FaChartLine className="text-gray-400 text-4xl mb-4" />
-      <p className="text-gray-500 mb-4">
-        No transactions found for the selected period
-      </p>
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-      >
-        <FaPlus className="mr-2" /> Add First Transaction
-      </button>
-    </div>
-  );
-
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 p-6 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Day Book{" "}
-            <span className="text-xs text-gray-500 ml-2">
-              (Ctrl+N: New, Ctrl+C: Credit, Ctrl+D: Debit)
-            </span>
-          </h1>
-          <div className="flex gap-4">
-            {user.permissions.includes("daybook:create") && (
-              <button
-                onClick={() => {
-                  setInitialTransactionType(null);
-                  setShowAddModal(true);
-                }}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors"
-              >
-                <FaPlus className="mr-2" /> Add Transaction
-              </button>
-            )}
-
-            <button
-              onClick={exportToExcel}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-green-600 transition-colors"
-              disabled={!transactions.length}
-            >
-              <FaFileDownload className="mr-2" /> Export
-            </button>
-          </div>
-        </div>
+        <DayBookHeader
+          user={user}
+          onAddTransaction={() => {
+            setInitialTransactionType(null);
+            setShowAddModal(true);
+          }}
+          onExportToExcel={exportToExcel}
+          hasTransactions={transactions.length > 0}
+        />
 
         <MonthlyBalanceCard balance={monthlyBalance} />
 
@@ -678,7 +579,12 @@ const DayBookPage = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         ) : transactions.length === 0 ? (
-          <EmptyState />
+          <EmptyState
+            onAddTransaction={() => {
+              setInitialTransactionType(null);
+              setShowAddModal(true);
+            }}
+          />
         ) : (
           <>
             <TransactionTable
@@ -689,7 +595,10 @@ const DayBookPage = () => {
               onDelete={handleDeleteTransaction}
             />
 
-            <PaginationControls />
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
           </>
         )}
 

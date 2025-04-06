@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { FaPlus, FaEye, FaDownload, FaFilter, FaSearch } from "react-icons/fa";
+import {
+  FaPlus,
+  FaEye,
+  FaDownload,
+  FaFilter,
+  FaSearch,
+  FaTrash,
+} from "react-icons/fa";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 import Config from "../utils/GlobalConfig";
@@ -38,6 +45,7 @@ const Invoices = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [deletingInvoice, setDeletingInvoice] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -182,6 +190,74 @@ const Invoices = () => {
       setIsInvoiceDetailsModalOpen(true);
     } catch (error) {
       console.error("Failed to fetch invoice details", error);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice) => {
+    console.log(invoice);
+    try {
+      const token = localStorage.getItem("token");
+
+      // Confirm deletion
+      const confirmDelete = window.confirm(
+        `Are you sure you want to delete invoice ${invoice.invoice_number}?`
+      );
+
+      if (!confirmDelete) return;
+
+      // Set the invoice being deleted
+      setDeletingInvoice(invoice);
+
+      // Fetch daybook transactions
+      const daybookResponse = await axios.get(
+        `${Config.API_BASE_URL}/daybook/transactions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Find matching transaction
+      const matchingTransaction = daybookResponse.data.data.find(
+        (transaction) =>
+          transaction.reference_number === invoice.invoice_number.toString()
+      );
+
+      // Delete invoice
+      await axios.delete(
+        `${Config.API_BASE_URL}/invoices/${invoice.invoice_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Delete matching daybook transaction if found
+      if (matchingTransaction) {
+        await axios.delete(
+          `${Config.API_BASE_URL}/daybook/transactions/${matchingTransaction.transaction_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      // Refresh invoices
+      fetchInvoices();
+
+      toast.success(
+        "Invoice and related daybook transaction deleted successfully"
+      );
+    } catch (error) {
+      console.error("Failed to delete invoice", error);
+      toast.error("Failed to delete invoice");
+    } finally {
+      // Reset deleting invoice state
+      setDeletingInvoice(null);
     }
   };
 
@@ -353,6 +429,7 @@ const Invoices = () => {
       let currentY = letterheadHeight + 50;
 
       // Tax Invoice Title
+      doc.rect(40,currentY-30,pageWidth-80,30); // Draw line
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
@@ -373,11 +450,12 @@ const Invoices = () => {
         additionalDetails = {}
       ) => {
         // Box
-        doc.rect(x, y, width, 130);
+        doc.rect(x+10, y, width-10, 130);
 
         // Title
         doc.setFont("helvetica", "normal");
-        doc.text(title, x + 10, y + 25);
+        doc.setFontSize(12);
+        doc.text(title, x + 20, y + 25);
 
         // Name and Address
         doc.setFont("helvetica", "bold");
@@ -385,27 +463,27 @@ const Invoices = () => {
         const nameLines = doc.splitTextToSize(name, width - 20);
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
+        doc.setFontSize(14);
         const addressLines = doc.splitTextToSize(address, width - 20);
 
         let lineY = y + 40;
         nameLines.forEach((line) => {
-          doc.text(line, x + 10, lineY);
+          doc.text(line, x + 20, lineY);
           lineY += 15;
         });
 
         addressLines.forEach((line) => {
-          doc.text(line, x + 10, lineY);
-          lineY += 12;
+          doc.text(line, x + 20, lineY);
+          lineY += 17;
         });
 
         // Additional Details
         if (Object.keys(additionalDetails).length) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
           let detailY = y + 130 + 15;
           Object.entries(additionalDetails).forEach(([key, value]) => {
-            doc.text(`${key}: ${value}`, x + 10, detailY);
+            doc.text(`${key}: ${value}`, x + 20, detailY);
             detailY += 15;
           });
         }
@@ -447,6 +525,9 @@ const Invoices = () => {
         }
       );
 
+      doc.rect(margin+10, currentY+130, pageWidth/2-55, 65);
+      doc.rect(pageWidth/2+15, currentY+130, pageWidth/2-55, 65);
+
       // Move to next section
       currentY += 180;
 
@@ -469,19 +550,23 @@ const Invoices = () => {
       ]);
 
       doc.autoTable({
-        startY: currentY + 10,
+        startY: currentY + 30,
+        // width: pageWidth - 2 * margin,
         head: [tableColumn],
         body: tableRows,
         theme: "grid",
         styles: {
-          fontSize: 10,
-          cellPadding: 5,
+          fontSize: 12,
+          cellPadding: 15,
+          cellWidth: "wrap",
           overflow: "linebreak",
+          halign: "center",
         },
         headStyles: {
           fillColor: [41, 128, 185],
           textColor: 255,
           fontSize: 12,
+
         },
       });
 
@@ -529,24 +614,24 @@ const Invoices = () => {
 
       // Render Financial Summary
       financialDetails.forEach((detail, index) => {
-        doc.setFont(detail.bold ? "helvetica-bold" : "helvetica", "normal");
+        doc.setFont(detail.bold ? "helvetica" : "helvetica", "normal");
         doc.setFontSize(detail.bold ? 14 : 12);
         doc.text(
           `${detail.label}: ${detail.value}`,
-          margin + 10,
+          margin + 15,
           finalY + index * 20
         );
       });
 
       // Amount in words
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
       doc.text(
         `Amount in Words: ${convertToWords(
           Math.round(invoiceData.grand_total)
         )}`,
-        margin + 10,
-        finalY + financialDetails.length * 20 + 20
+        margin + 15,
+        finalY-20 + financialDetails.length * 20 + 20
       );
 
       // Bottom Details Section
@@ -568,7 +653,7 @@ const Invoices = () => {
         const columnWidth = (pageWidth - 3 * margin) / 2;
 
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
+        doc.setFontSize(12);
 
         const leftColumnDetails = bottomDetails;
         const rightColumnDetails = bottomDetails;
@@ -636,18 +721,6 @@ const Invoices = () => {
       toast.error("Failed to generate invoice");
     }
   };
-  // const handleInvoiceUpdate = async (updatedInvoice) => {
-  //   const updatedInvoices = invoices.map((invoice) =>
-  //     invoice.invoice_id === updatedInvoice.invoice_id
-  //       ? { ...invoice, ...updatedInvoice }
-  //       : invoice
-  //   );
-
-  //   setInvoices(updatedInvoices);
-  //   // Reapply current filter
-  //   const filtered = filterInvoices(updatedInvoices, statusFilter);
-  //   setFilteredInvoices(filtered);
-  // };
 
   const FilterSection = () => {
     const filterButtons = [
@@ -858,6 +931,19 @@ const Invoices = () => {
                           >
                             <FaDownload className="mr-1" /> Download
                           </button>
+                          {user.permissions.includes(
+                            "sales_invoices:delete"
+                          ) && (
+                            <button
+                              onClick={() =>
+                                handleDeleteInvoice(invoice)
+                              }
+                              className="text-red-500 hover:text-red-700 transition flex items-center"
+                              title="Delete Invoice"
+                            >
+                              <FaTrash className="mr-1" /> Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
