@@ -49,6 +49,7 @@ const ReportsSubmenu = ({ onClose }) => {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+      
       a.href = url;
       a.download = `transaction_report_${
         startDate.toISOString().split("T")[0]

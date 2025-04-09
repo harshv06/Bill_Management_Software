@@ -36,6 +36,7 @@ import BalanceSheetPage from "./pages/BalanceSheet";
 import ProfitAndLossPage from "./pages/ProfitAndLossPages";
 import CreateUserPage from "./pages/CreateUserPage";
 import GSTReportPage from "./pages/GST_Reports.jsx";
+import TDSReportPage from "./pages/TDS_REPORTS.jsx";
 
 // Unauthorized Access Component
 const UnauthorizedAccess = () => {
@@ -316,6 +317,17 @@ function App() {
                   fallback={<UnauthorizedAccess />}
                 >
                   <Settings />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/TDS_Reports"
+              element={
+                <PrivateRoute
+                  requiredPermission={[PERMISSIONS.ROLE_MANAGEMENT.VIEW]}
+                  fallback={<UnauthorizedAccess />}
+                >
+                  <TDSReportPage />
                 </PrivateRoute>
               }
             />
