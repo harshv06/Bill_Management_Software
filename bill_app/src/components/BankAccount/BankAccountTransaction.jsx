@@ -34,7 +34,7 @@ const BankAccountTransactions = ({ account, onAddTransaction }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `${Config.API_BASE_URL}/daybook/transactions`,
+        `${Config.API_BASE_URL}/bank/account/${account.account_id}/statement`,
         {
           params: {
             startDate: filters.startDate.toISOString(),
@@ -51,7 +51,7 @@ const BankAccountTransactions = ({ account, onAddTransaction }) => {
         }
       );
       console.log("Transactions:", response);
-      setTransactions(response.data.data);
+      setTransactions(response.data.data.transactions || []);
     } catch (error) {
       console.error("Error fetching bank account transactions:", error);
       setError(error.response?.data?.message || "Failed to fetch transactions");

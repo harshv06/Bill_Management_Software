@@ -299,7 +299,7 @@ const GenerateInvoiceModal = ({
         car_id: null,
         category: "PAYMENTS",
         company_id: response.data.data.invoice.company_id,
-        description: `Invoice created for ${response.data.data.invoice.customer_name}`,
+        description: `Invoice created for ${response.data.data.invoice.customer_name}-${response.data.data.invoice.invoice_number}`,
         gst_applicable: response.data.data.invoice.sgst_amount > 0,
         party_name: response.data.data.invoice.customer_name,
         party_type: "Customer",

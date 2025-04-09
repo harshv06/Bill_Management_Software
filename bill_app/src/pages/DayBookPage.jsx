@@ -31,6 +31,7 @@ const DayBookPage = () => {
   });
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [monthlyBalance, setMonthlyBalance] = useState(null);
+  const [currentBankBalance, setCurrentBankBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -162,7 +163,10 @@ const DayBookPage = () => {
           },
         }
       );
+      console.log("Monthly Balance Response:", balanceResponse);
       setMonthlyBalance(balanceResponse.data.data.monthlyBalance);
+      setCurrentBankBalance(balanceResponse.data.data.totalCurrentBalance);
+      
     } catch (error) {
       console.error("Error fetching transactions:", error);
       setError(error.response?.data?.message || "Failed to fetch transactions");
@@ -438,7 +442,7 @@ const DayBookPage = () => {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
-
+      console.log("Existing Transaction:", existingTransaction);
       const originalTransaction = existingTransaction.data.data;
       console.log("Original Transaction:", originalTransaction);
 
@@ -464,7 +468,6 @@ const DayBookPage = () => {
         reference_number: carPaymentResponse
           ? `CAR-${carPaymentResponse.data.payment.car_id}-${carPaymentResponse.data.payment.payment_id}`
           : originalTransaction.reference_number,
-        // Preserve or update bank account details
         bank_account_id:
           updateData.bank_account_id || originalTransaction.bank_account_id,
         bank_name: updateData.bank_name || originalTransaction.bank_name,
@@ -475,11 +478,26 @@ const DayBookPage = () => {
           updateData.bank_ifsc_code || originalTransaction.bank_ifsc_code,
       };
 
+      let tdsAmount = 0;
+      if (finalUpdateData.tds_applicable && finalUpdateData.tds_percentage) {
+        // Calculate TDS based on the transaction amount
+        const tdsPercentage = parseFloat(finalUpdateData.tds_percentage) || 0;
+        const transactionAmount = parseFloat(
+          finalUpdateData.amount || originalTransaction.amount
+        );
+
+        tdsAmount = (transactionAmount * tdsPercentage) / 100;
+        tdsAmount = parseFloat(tdsAmount.toFixed(2));
+      }
+
+      finalUpdateData.tds_amount = tdsAmount;
+
       console.log("Final Update Data:", finalUpdateData);
       console.log("Original Transaction:", originalTransaction);
 
       // Prepare balance update data
       const balanceUpdateData = {
+        description: finalUpdateData.description || originalTransaction.description,
         bank_account_id:
           finalUpdateData.bank_account_id ||
           originalTransaction.bank_account_id,
@@ -489,6 +507,9 @@ const DayBookPage = () => {
         new_amount: finalUpdateData.amount,
         new_transaction_type: finalUpdateData.transaction_type,
         reference_number: originalTransaction.reference_number,
+        tds_applicable: finalUpdateData.tds_applicable,
+        tds_amount: tdsAmount,
+        transaction_type: finalUpdateData.transaction_type,
       };
 
       // Update bank account balance if a bank account is involved
@@ -497,6 +518,18 @@ const DayBookPage = () => {
         balanceUpdateData.original_bank_account_id
       ) {
         try {
+          if (balanceUpdateData.tds_applicable) {
+            // If TDS is applicable, adjust the balance accordingly
+            if (balanceUpdateData.transaction_type === "CREDIT") {
+              // For credit transactions, reduce the balance by TDS amount
+              balanceUpdateData.new_amount =
+                parseFloat(balanceUpdateData.new_amount) - tdsAmount;
+            } else if (balanceUpdateData.transaction_type === "DEBIT") {
+              // For debit transactions, increase the balance by TDS amount
+              balanceUpdateData.new_amount =
+                parseFloat(balanceUpdateData.new_amount) + tdsAmount;
+            }
+          }
           // Use sophisticated balance update method
           await BankAccountService.updateAccountBalanceWithComparison(
             balanceUpdateData
@@ -568,7 +601,7 @@ const DayBookPage = () => {
           hasTransactions={transactions.length > 0}
         />
 
-        <MonthlyBalanceCard balance={monthlyBalance} />
+        <MonthlyBalanceCard balance={monthlyBalance} totalCurrentBalance={currentBankBalance} />
 
         <FilterSection filters={filters} setFilters={setFilters} />
 

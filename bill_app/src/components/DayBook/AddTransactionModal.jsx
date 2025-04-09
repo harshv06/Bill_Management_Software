@@ -639,6 +639,16 @@ const AddTransactionModal = ({
   useEffect(() => {
     // When initialData changes, pre-select bank account and handle sub-group
     if (initialData) {
+      const tdsApplicable = initialData.tds_applicable || false;
+      const tdsPercentage =
+        initialData.tds_percentage ||
+        (initialData.tds_amount && initialData.amount
+          ? (
+              (parseFloat(initialData.tds_amount) /
+                parseFloat(initialData.amount)) *
+              100
+            ).toFixed(2)
+          : "");
       // Pre-select bank account if applicable
       if (
         initialData.bank_account_id &&
@@ -674,6 +684,13 @@ const AddTransactionModal = ({
               ...prev,
               category: initialData.category,
               sub_group: initialData.sub_group,
+              tds_applicable: tdsApplicable,
+              tds_percentage: tdsPercentage,
+
+              // Ensure date is converted to Date object
+              transaction_date: initialData.transaction_date
+                ? new Date(initialData.transaction_date)
+                : new Date(),
             }));
           });
         }
@@ -883,7 +900,7 @@ const AddTransactionModal = ({
                               tds_applicable: e.target.checked,
                               // Reset percentage if unchecked
                               tds_percentage: e.target.checked
-                                ? formData.tds_percentage
+                                ? formData.tds_percentage || ""
                                 : "",
                             })
                           }
