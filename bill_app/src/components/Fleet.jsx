@@ -15,7 +15,9 @@ const Fleet = () => {
   const dispatch = useDispatch();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data, loading, error } = useSelector((state) => state.FleetData);
+  const { cars, pagination, loading, error } = useSelector(
+    (state) => state.FleetData
+  );
   const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [showSalaryHistory, setShowSalaryHistory] = useState(false);
   // State declarations
@@ -26,6 +28,10 @@ const Fleet = () => {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("car_id");
+  const [sortOrder, setSortOrder] = useState("ASC");
+  const itemsPerPage = 10; // Number of items per page
 
   // Constants
   const filterOptions = [
@@ -37,26 +43,60 @@ const Fleet = () => {
 
   // Fetch fleet data on component mount
   useEffect(() => {
-    dispatch(fetchFleetData());
-  }, [dispatch]);
+    dispatch(
+      fetchFleetData({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        status: statusFilter,
+        sortBy,
+        sortOrder,
+      })
+    );
+  }, [dispatch, currentPage, searchTerm, statusFilter, sortBy, sortOrder]);
 
-  // Memoized filtered cars
-  const filteredCars = useMemo(() => {
-    if (!data?.cars) return [];
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
-    return data.cars.filter((car) => {
-      const searchString = searchTerm.toLowerCase();
-      const matchesSearch =
-        car.car_id.toLowerCase().includes(searchString) ||
-        car.car_name.toLowerCase().includes(searchString) ||
-        car.car_model.toLowerCase().includes(searchString);
+  // const filteredAndPaginatedCars = useMemo(() => {
+  //   if (!data?.cars) return [];
 
-      const matchesStatus =
-        statusFilter === "ALL" || car.status === statusFilter;
+  //   const filtered = data.cars.filter((car) => {
+  //     const searchString = searchTerm.toLowerCase();
+  //     const matchesSearch =
+  //       car.car_id.toLowerCase().includes(searchString) ||
+  //       car.car_name.toLowerCase().includes(searchString) ||
+  //       car.car_model.toLowerCase().includes(searchString);
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [data, searchTerm, statusFilter]);
+  //     const matchesStatus =
+  //       statusFilter === "ALL" || car.status === statusFilter;
+
+  //     return matchesSearch && matchesStatus;
+  //   });
+
+  //   // Pagination logic
+  //   const startIndex = (currentPage - 1) * itemsPerPage;
+  //   const endIndex = startIndex + itemsPerPage;
+  //   return filtered.slice(startIndex, endIndex);
+  // }, [data, searchTerm, statusFilter, currentPage]);
+
+  // const totalPages = useMemo(() => {
+  //   if (!data?.cars) return 0;
+  //   const filteredCars = data.cars.filter((car) => {
+  //     const searchString = searchTerm.toLowerCase();
+  //     const matchesSearch =
+  //       car.car_id.toLowerCase().includes(searchString) ||
+  //       car.car_name.toLowerCase().includes(searchString) ||
+  //       car.car_model.toLowerCase().includes(searchString);
+
+  //     const matchesStatus =
+  //       statusFilter === "ALL" || car.status === statusFilter;
+
+  //     return matchesSearch && matchesStatus;
+  //   });
+  //   return Math.ceil(filteredCars.length / itemsPerPage);
+  // }, [data, searchTerm, statusFilter]);
 
   // Handlers
   const navigateToCarDetails = (car) => {
@@ -211,128 +251,159 @@ const Fleet = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Fleet Management</h1>
-          <div className="flex gap-2">
-            {renderAddButton()}
-            {renderSalaryButton()}
-            <button
-              onClick={() => setShowSalaryHistory(true)}
-              className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
-            >
-              Salary History
-            </button>
-          </div>
-        </div>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar className="w-64 overflow-y-auto flex-shrink-0" />
 
-        {/* Filters */}
-        <div className="mb-4 flex gap-4">
-          {filterOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setStatusFilter(option.value)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                statusFilter === option.value
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search by Car ID, Name, or Model"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-          />
-        </div>
-
-        {/* Cars List */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {loading ? (
-            <div className="p-4 text-center text-gray-500">
-              <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 rounded-full"></div>
-              <p>Loading...</p>
-            </div>
-          ) : error ? (
-            <div className="p-4 text-center text-red-500">Error: {error}</div>
-          ) : filteredCars.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">No cars found</div>
-          ) : (
-            <>
-              {/* Table Header */}
-              <div className="grid grid-cols-6 gap-4 p-4 font-bold bg-gray-50 border-b">
-                <div>Car ID</div>
-                <div>Name</div>
-                <div>Model</div>
-                <div>Status</div>
-                <div>Payment Type</div>
-                <div>Actions</div>
-              </div>
-
-              {/* Table Body */}
-              <ul>
-                {filteredCars.map((car) => (
-                  <li
-                    key={car.car_id}
-                    className="grid grid-cols-6 gap-4 p-4 hover:bg-gray-50 items-center border-b"
-                    onClick={() => navigateToCarDetails(car)}
-                  >
-                    <div>{car.car_id}</div>
-                    <div>{car.car_name}</div>
-                    <div>{car.car_model}</div>
-                    <div>
-                      <span
-                        className={`px-2 py-1 rounded-full text-sm ${
-                          car.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : car.status === "INACTIVE"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {car.status}
-                      </span>
-                    </div>
-                    <div>{car.payment_type}</div>
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex gap-2"
-                    >
-                      {renderActionButtons(car)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {data?.pages > 1 && (
-          <div className="mt-4 flex justify-end gap-2">
-            {Array.from({ length: data.pages }, (_, i) => (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header and Filters (Fixed) */}
+        <div className="bg-white shadow-md p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Fleet Management
+            </h1>
+            <div className="flex gap-2">
+              {renderAddButton()}
+              {renderSalaryButton()}
               <button
-                key={i + 1}
-                onClick={() => dispatch(fetchFleetData(i + 1))}
-                className={`px-3 py-1 rounded transition-colors ${
-                  data.currentPage === i + 1
+                onClick={() => setShowSalaryHistory(true)}
+                className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Salary History
+              </button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="mb-4 flex gap-4">
+            {filterOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  setStatusFilter(option.value);
+                  setCurrentPage(1);
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  statusFilter === option.value
                     ? "bg-blue-500 text-white"
                     : "bg-gray-200 hover:bg-gray-300"
                 }`}
               >
-                {i + 1}
+                {option.label}
               </button>
             ))}
+          </div>
+
+          {/* Search */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search by Car ID, Name, or Model"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-3 border rounded-md"
+            />
+          </div>
+        </div>
+
+        {/* Cars List */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="bg-white rounded-lg m-4">
+            {loading ? (
+              <div className="p-4 text-center text-gray-500">
+                <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 rounded-full"></div>
+                <p>Loading...</p>
+              </div>
+            ) : error ? (
+              <div className="p-4 text-center text-red-500">Error: {error}</div>
+            ) : cars.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">No cars found</div>
+            ) : (
+              <>
+                {/* Table Header */}
+                <div className="grid grid-cols-6 gap-4 p-4 font-bold bg-gray-50 border-b">
+                  <div>Car ID</div>
+                  <div>Name</div>
+                  <div>Model</div>
+                  <div>Status</div>
+                  <div>Payment Type</div>
+                  <div>Actions</div>
+                </div>
+
+                {/* Table Body */}
+                <ul>
+                  {cars.map((car) => (
+                    <li
+                      key={car.car_id}
+                      className="grid grid-cols-6 gap-4 p-4 hover:bg-gray-50 items-center border-b cursor-pointer"
+                      onClick={() => navigateToCarDetails(car)}
+                    >
+                      <div>{car.car_id}</div>
+                      <div>{car.car_name}</div>
+                      <div>{car.car_model}</div>
+                      <div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${
+                            car.status === "ACTIVE"
+                              ? "bg-green-100 text-green-800"
+                              : car.status === "INACTIVE"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {car.status}
+                        </span>
+                      </div>
+                      <div>{car.payment_type}</div>
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex gap-2"
+                      >
+                        {renderActionButtons(car)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 p-4">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={pagination.currentPage === 1}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+
+            {[...Array(pagination.totalPages)].map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentPage(index + 1)}
+                className={`px-4 py-2 rounded ${
+                  pagination.currentPage === index + 1
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200"
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) =>
+                  Math.min(prev + 1, pagination.totalPages)
+                )
+              }
+              disabled={pagination.currentPage === pagination.totalPages}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         )}
 
@@ -353,7 +424,7 @@ const Fleet = () => {
         <SalaryCalculationModal
           isOpen={showSalaryModal}
           onClose={() => setShowSalaryModal(false)}
-          cars={data?.cars || []}
+          cars={cars || []}
           onGenerateReport={(reportData) => {
             // Handle report generation
             console.log("Report Data:", reportData);

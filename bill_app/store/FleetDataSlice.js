@@ -14,6 +14,7 @@ export const fetchFleetData = createAsyncThunk(
       search = "",
       sortBy = "car_id",
       sortOrder = "ASC",
+      status = "ALL",
     } = {},
     { rejectWithValue }
   ) => {
@@ -24,7 +25,9 @@ export const fetchFleetData = createAsyncThunk(
         search,
         sortBy,
         sortOrder,
+        status,
       }).toString();
+      console.log("Query Params:", queryParams); // Log the query parameters
       const token = localStorage.getItem("token");
 
       const response = await fetch(
@@ -40,14 +43,21 @@ export const fetchFleetData = createAsyncThunk(
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch fleet data");
+        const errorData = await response.json();
+        return rejectWithValue(
+          errorData.message || "Failed to fetch fleet data"
+        );
       }
 
       const data = await response.json();
 
       if (data.status === "success") {
-        console.log("Data:", data.data);
-        return data.data;
+        return {
+          ...data.data,
+          page,
+          search,
+          status,
+        };
       } else {
         return rejectWithValue(data.message || "Failed to fetch fleet data");
       }
@@ -94,13 +104,16 @@ export const updateCar = createAsyncThunk(
   "fleetData/updateCar",
   async ({ carId, carData }, { rejectWithValue, dispatch }) => {
     try {
-      const response = await fetch(`${Config.API_BASE_URL}/cars/update/${carId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(carData),
-      });
+      const response = await fetch(
+        `${Config.API_BASE_URL}/cars/update/${carId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(carData),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to update car");
@@ -126,12 +139,15 @@ export const deleteCar = createAsyncThunk(
   "fleetData/deleteCar",
   async (carId, { rejectWithValue, dispatch }) => {
     try {
-      const response = await fetch(`${Config.API_BASE_URL}/cars/delete/${carId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${Config.API_BASE_URL}/cars/delete/${carId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to delete car");
@@ -171,7 +187,21 @@ const initialState = {
 
 const fleetDataSlice = createSlice({
   name: "fleetData",
-  initialState,
+  initialState: {
+    data: null,
+    cars: [],
+    pagination: {
+      total: 0,
+      totalPages: 0,
+      currentPage: 1,
+      limit: 10,
+    },
+    loading: false,
+    error: null,
+    currentPage: 1,
+    search: "",
+    status: "ALL",
+  },
   reducers: {
     resetStatus: (state) => {
       state.addCarStatus = "idle";
@@ -189,11 +219,16 @@ const fleetDataSlice = createSlice({
       })
       .addCase(fetchFleetData.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+        state.cars = action.payload.cars;
+        state.pagination = action.payload.pagination;
+        state.currentPage = action.payload.page;
+        state.search = action.payload.search;
+        state.status = action.payload.status;
       })
       .addCase(fetchFleetData.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || "Failed to fetch fleet data";
+        state.error = action.payload;
+        state.cars = [];
       })
 
       // Add car

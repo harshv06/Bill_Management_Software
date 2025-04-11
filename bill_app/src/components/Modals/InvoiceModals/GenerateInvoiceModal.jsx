@@ -540,7 +540,7 @@ const GenerateInvoiceModal = ({
       let currentY = letterheadHeight + 50;
 
       // Tax Invoice Title
-      doc.rect(40,currentY-30,pageWidth-80,30); // Draw line
+      doc.rect(40, currentY - 30, pageWidth - 80, 30); // Draw line
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
@@ -561,7 +561,7 @@ const GenerateInvoiceModal = ({
         additionalDetails = {}
       ) => {
         // Box
-        doc.rect(x+10, y, width-10, 130);
+        doc.rect(x + 10, y, width - 10, 130);
 
         // Title
         doc.setFont("helvetica", "normal");
@@ -571,7 +571,10 @@ const GenerateInvoiceModal = ({
         // Name and Address
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
-        const nameLines = doc.splitTextToSize(name, width - 20);
+        const nameLines = doc.splitTextToSize(
+          name,
+          title === "To:" ? 120 : width - 20
+        );
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
@@ -637,8 +640,8 @@ const GenerateInvoiceModal = ({
       );
 
       // Move to next section
-      doc.rect(margin+10, currentY+130, pageWidth/2-55, 65);
-      doc.rect(pageWidth/2+15, currentY+130, pageWidth/2-55, 65);
+      doc.rect(margin + 10, currentY + 130, pageWidth / 2 - 55, 65);
+      doc.rect(pageWidth / 2 + 15, currentY + 130, pageWidth / 2 - 55, 65);
       currentY += 180;
 
       // Product Table
@@ -660,7 +663,7 @@ const GenerateInvoiceModal = ({
       ]);
 
       doc.autoTable({
-        startY: currentY + 30 ,
+        startY: currentY + 30,
         head: [tableColumn],
         body: tableRows,
         theme: "grid",
@@ -717,7 +720,7 @@ const GenerateInvoiceModal = ({
       doc.text(
         `Amount in Words: ${convertToWords(Math.round(grandTotal))}`,
         margin + 15,
-        finalY-20 + financialDetails.length * 20 + 20
+        finalY - 20 + financialDetails.length * 20 + 20
       );
 
       const renderBottomDetailsInTwoColumns = (
