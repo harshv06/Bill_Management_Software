@@ -388,8 +388,8 @@ const Invoices = () => {
         format: "a4",
       });
 
-      const pageWidth = 595.28;
-      const pageHeight = 841.89;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 30;
       const columnSpacing = 20;
 
@@ -429,7 +429,7 @@ const Invoices = () => {
       let currentY = letterheadHeight + 50;
 
       // Tax Invoice Title
-      doc.rect(40,currentY-30,pageWidth-80,30); // Draw line
+      doc.rect(40, currentY - 30, pageWidth - 80, 30); // Draw line
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
       doc.text("TAX INVOICE", pageWidth / 2, currentY - 10, {
@@ -451,6 +451,7 @@ const Invoices = () => {
       ) => {
         // Box
         doc.rect(x+10, y, width-10, 130);
+        // doc.rect(x, y, width, "auto");
 
         // Title
         doc.setFont("helvetica", "normal");
@@ -460,7 +461,10 @@ const Invoices = () => {
         // Name and Address
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
-        const nameLines = doc.splitTextToSize(name, width - 20);
+        const nameLines = doc.splitTextToSize(
+          name,
+          title === "To:" ? 120 : width - 20
+        );
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
@@ -525,8 +529,8 @@ const Invoices = () => {
         }
       );
 
-      doc.rect(margin+10, currentY+130, pageWidth/2-55, 65);
-      doc.rect(pageWidth/2+15, currentY+130, pageWidth/2-55, 65);
+      doc.rect(margin + 10, currentY + 130, pageWidth / 2 - 55, 65);
+      doc.rect(pageWidth / 2 + 15, currentY + 130, pageWidth / 2 - 55, 65);
 
       // Move to next section
       currentY += 180;
@@ -558,7 +562,6 @@ const Invoices = () => {
         styles: {
           fontSize: 12,
           cellPadding: 15,
-          cellWidth: "wrap",
           overflow: "linebreak",
           halign: "center",
         },
@@ -566,7 +569,6 @@ const Invoices = () => {
           fillColor: [41, 128, 185],
           textColor: 255,
           fontSize: 12,
-
         },
       });
 
@@ -631,7 +633,7 @@ const Invoices = () => {
           Math.round(invoiceData.grand_total)
         )}`,
         margin + 15,
-        finalY-20 + financialDetails.length * 20 + 20
+        finalY - 20 + financialDetails.length * 20 + 20
       );
 
       // Bottom Details Section
@@ -696,7 +698,7 @@ const Invoices = () => {
         },
         { label: "Service Category", value: companyData?.service_category },
         { label: "Bank Name & Branch", value: companyData?.bank_name },
-        { label: "Account No", value: companyData?.account_number },
+        { label: "Account No", value: companyData?.bank_account_number },
         { label: "IFSC Code", value: companyData?.ifsc_code },
       ];
 
@@ -935,9 +937,7 @@ const Invoices = () => {
                             "sales_invoices:delete"
                           ) && (
                             <button
-                              onClick={() =>
-                                handleDeleteInvoice(invoice)
-                              }
+                              onClick={() => handleDeleteInvoice(invoice)}
                               className="text-red-500 hover:text-red-700 transition flex items-center"
                               title="Delete Invoice"
                             >
