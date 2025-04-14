@@ -181,7 +181,10 @@ const Fleet = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify(carData),
+        body: JSON.stringify({
+          ...carData,
+          fleet_company_ids: carData.company_ids, // Pass multiple company IDs
+        }),
       });
 
       if (!response.ok) {
